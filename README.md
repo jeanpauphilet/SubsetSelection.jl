@@ -64,24 +64,22 @@ For classification, use +1/-1 labels.
 
 ## Required and optional parameters
 
-<!-- `glmnet` has two required parameters: the m x n predictor matrix `X` and the dependent variable `y`. It additionally accepts an optional third argument, `family`, which can be used to specify a generalized linear model. Currently, only `Normal()` (least squares, default), `Binomial()` (logistic), and `Poisson()` are supported, although the glmnet Fortran code also implements a Cox model. For logistic models, `y` is a m x 2 matrix, where the first column is the count of negative responses for each row in `X` and the second column is the count of positive responses. For all other models, `y` is a vector.
+`subsetSelection` has four required parameters:
+- the loss function to be minimized, to be chosen among least squares (`OLS()`), L1SVR (`L1SVR(ɛ)`), L2SVR (`L2SVR(ɛ)`), Logistic loss (`LogReg()`), Hinge Loss (`L1SVM()`), L2-SVM (`L2SVM()`).
+- the model used to enforce sparsity; either by adding a hard constraint of the form "||w|| < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||" (`BIC(λ)`) to the objective.
+- the vector of outputs `Y` of size `n`, the sample size. In classification settings, `Y` should be vector of ±1s.
+- the vector of inputs `X` of size `n`×`p`, where `n` and `p` are the number of samples and features respectively.
 
-`glmnet` also accepts many optional parameters, described below:
-
- - `weights`: A vector of weights for each sample of the same size as `y`.
- - `alpha`: The tradeoff between lasso and ridge regression. This defaults to `1.0`, which specifies a lasso model.
- - `penalty_factor`: A vector of length n of penalties for each predictor in `X`. This defaults to all ones, which weights each predictor equally. To specify that a predictor should be unpenalized, set the corresponding entry to zero.
- - `constraints`: An n x 2 matrix specifying lower bounds (first column) and upper bounds (second column) on each predictor. By default, this is `[-Inf Inf]` for each predictor in `X`.
- - `dfmax`: The maximum number of predictors in the largest model.
- - `pmax`: The maximum number of predictors in any model.
- - `nlambda`: The number of values of λ along the path to consider.
- - `lambda_min_ratio`: The smallest λ value to consider, as a ratio of the value of λ that gives the null model (i.e., the model with only an intercept). If the number of observations exceeds the number of variables, this defaults to `0.0001`, otherwise `0.01`.
- - `lambda`: The λ values to consider. By default, this is determined from `nlambda` and `lambda_min_ratio`.
- - `tol`: Convergence criterion. Defaults to `1e-7`.
- - `standardize`: Whether to standardize predictors so that they are in the same units. Defaults to `true`. Beta values are always presented on the original scale.
- - `intercept`: Whether to fit an intercept term. The intercept is always unpenalized. Defaults to `true`.
- - `maxit`: The maximum number of iterations of the cyclic coordinate descent algorithm. If convergence is not achieved, a warning is returned. -->
-
+In addition, `subsetSelection` accepts the following optional parameters:
+- an initialization for the selected features, `indInit`.
+- an initialization for the dual variables, `αInit`.
+- the value of the ℓ2-regularization parameter `γ`, set to 1/√n by default.
+- `intercept`, a boolean. If true, an intercept/bias term is computed as well.
+- the maximum number of iterations in the sub-gradient algorithm, `maxIter`.
+- the value of the gradient stepsize `δ`.
+- the number of gradient updates of dual variable α performed per update of primal variable s, `gradUp`.
+- `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. By default, set to false.
+ - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
 ## Reference
 
