@@ -1,7 +1,6 @@
 # SubsetSelection
 
-[![Build Status](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl.svg?branch=master)](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl)
-[![Coverage Status](https://coveralls.io/repos/jeanpauphilet/SubsetSelection.jl/badge.svg?branch=master)](https://coveralls.io/r/jeanpauphilet/SubsetSelection.jl?branch=master)
+[![0.5](http://pkg.julialang.org/badges/SubsetSelection_0.5.svg)](http://pkg.julialang.org/?pkg=SubsetSelection)
 
 SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty. Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solves its boolean relaxation using a dual sub-gradient approach.
 
