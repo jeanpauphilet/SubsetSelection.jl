@@ -1,6 +1,6 @@
 module SubsetSelection
 
-export OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM, Constraint, BIC, SparseEstimator, subsetSelection
+export LossFunction, Regression, Classification, OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM, Constraint, BIC, SparseEstimator, subsetSelection
 
 ##LossFunction type: define the loss function used and its hyper-parameter
 abstract LossFunction
