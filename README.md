@@ -1,5 +1,4 @@
 # SubsetSelection
-# GLMNet
 
 [![Build Status](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl.svg?branch=master)](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl)
 [![Coverage Status](https://coveralls.io/repos/jeanpauphilet/SubsetSelection.jl/badge.svg?branch=master)](https://coveralls.io/r/jeanpauphilet/SubsetSelection.jl?branch=master)
