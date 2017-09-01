@@ -44,7 +44,7 @@ abstract Sparsity
 
 ##SparseEstimator type: output of the algorithm
 type SparseEstimator
-  loss::Loss                #Loss function used in the model
+  loss::LossFunction        #Loss function used in the model
   sparsity::Sparsity        #Model to account for sparsity
   param::Float64            #Value of k/λ
   indices::Array            #Set of relevant indices
@@ -79,7 +79,7 @@ end
 #
 # OUTPUT
 # - SparseEstimator
-function SubsetSelection(ℓ::Loss, Card::Sparsity, Y, X;
+function SubsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
     maxIter = 100, δ = 1e-3, gradUp = 10,
@@ -192,7 +192,7 @@ function grad_fenchel(ℓ::L2SVM, y, a)
 end
 
 ##Gradient of f w.r.t. the dual variable α
-function grad_dual(ℓ::Loss, Y, X, α, indices, γ)
+function grad_dual(ℓ::LossFunction, Y, X, α, indices, γ)
   g = zeros(size(X,1))
   for i in 1:size(X,1)
     g[i] = - grad_fenchel(ℓ, Y[i], α[i])
@@ -244,7 +244,7 @@ function partial_min(Card::BIC, X, α, γ)
 end
 
 ##Bias term
-function compute_bias(ℓ::Loss, Y, X, α, indices, γ, intercept::Bool)
+function compute_bias(ℓ::LossFunction, Y, X, α, indices, γ, intercept::Bool)
   if intercept
     g = grad_dual(ℓ, Y, X, α, indices, γ)
     return (minimum(g[α != 0.]) + maximum(g[α != 0.]))/2
