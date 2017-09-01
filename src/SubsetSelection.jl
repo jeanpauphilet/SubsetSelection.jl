@@ -1,6 +1,6 @@
 module SubsetSelection
 
-export OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM, Constraint, BIC, SparseEstimator, SubsetSelection
+export OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM, Constraint, BIC, SparseEstimator, subsetSelection
 
 ##LossFunction type: define the loss function used and its hyper-parameter
 abstract LossFunction
@@ -46,7 +46,6 @@ abstract Sparsity
 type SparseEstimator
   loss::LossFunction        #Loss function used in the model
   sparsity::Sparsity        #Model to account for sparsity
-  param::Float64            #Value of k/λ
   indices::Array            #Set of relevant indices
   w::Array{Float64}         #Estimator w on those selected indices
   α::Array{Float64}         #Dual variables α
@@ -133,7 +132,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     #Bias
     b = compute_bias(ℓ, Y, X, a, indices, γ, intercept)
 
-  return SparseEstimator(ℓ, Card, parameter(Card), indices, w, a, b, iter)
+  return SparseEstimator(ℓ, Card, indices, w, a, b, iter)
 end
 
 
