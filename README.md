@@ -3,11 +3,11 @@
 [![Build Status](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl.svg?branch=master)](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl)
 [![Coverage Status](https://coveralls.io/repos/jeanpauphilet/SubsetSelection.jl/badge.svg?branch=master)](https://coveralls.io/r/jeanpauphilet/SubsetSelection.jl?branch=master)
 
-SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty (BIC estimators). Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solve its boolean relaxation using a dual sub-gradient approach.
+SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty (BIC estimators). Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solves its boolean relaxation using a dual sub-gradient approach.
 
-<!-- ## Quick start
+## Quick start
 
-To fit a basic model:
+<!-- To fit a basic model:
 
 ```julia
 julia> using SubsetSelection
@@ -67,11 +67,11 @@ julia> cv.path.betas[:, 48]
  0.00366805
  0.0       
  0.0
-```
+``` -->
 
-## Fitting models
+## Required and optional parameters
 
-`glmnet` has two required parameters: the m x n predictor matrix `X` and the dependent variable `y`. It additionally accepts an optional third argument, `family`, which can be used to specify a generalized linear model. Currently, only `Normal()` (least squares, default), `Binomial()` (logistic), and `Poisson()` are supported, although the glmnet Fortran code also implements a Cox model. For logistic models, `y` is a m x 2 matrix, where the first column is the count of negative responses for each row in `X` and the second column is the count of positive responses. For all other models, `y` is a vector.
+<!-- `glmnet` has two required parameters: the m x n predictor matrix `X` and the dependent variable `y`. It additionally accepts an optional third argument, `family`, which can be used to specify a generalized linear model. Currently, only `Normal()` (least squares, default), `Binomial()` (logistic), and `Poisson()` are supported, although the glmnet Fortran code also implements a Cox model. For logistic models, `y` is a m x 2 matrix, where the first column is the count of negative responses for each row in `X` and the second column is the count of positive responses. For all other models, `y` is a vector.
 
 `glmnet` also accepts many optional parameters, described below:
 
@@ -87,12 +87,12 @@ julia> cv.path.betas[:, 48]
  - `tol`: Convergence criterion. Defaults to `1e-7`.
  - `standardize`: Whether to standardize predictors so that they are in the same units. Defaults to `true`. Beta values are always presented on the original scale.
  - `intercept`: Whether to fit an intercept term. The intercept is always unpenalized. Defaults to `true`.
- - `maxit`: The maximum number of iterations of the cyclic coordinate descent algorithm. If convergence is not achieved, a warning is returned.
+ - `maxit`: The maximum number of iterations of the cyclic coordinate descent algorithm. If convergence is not achieved, a warning is returned. -->
 
 
-## See also
+## Reference
 
- - [Lasso.jl](https://github.com/simonster/Lasso.jl), a pure Julia implementation of the glmnet coordinate descent algorithm that often achieves better performance.
+ <!-- - [Lasso.jl](https://github.com/simonster/Lasso.jl), a pure Julia implementation of the glmnet coordinate descent algorithm that often achieves better performance.
  - [LARS.jl](https://github.com/simonster/LARS.jl), an implementation
    of least angle regression for fitting entire linear (but not
    generalized linear) Lasso and Elastic Net coordinate paths. -->
