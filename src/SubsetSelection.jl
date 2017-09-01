@@ -82,7 +82,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
     maxIter = 100, δ = 1e-3, gradUp = 10,
-    anticycling = true, averaging = true)
+    anticycling = false, averaging = true)
 
   n = size(Y, 1)
   p = size(X, 2)

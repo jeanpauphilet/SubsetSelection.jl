@@ -35,7 +35,7 @@ julia> Sparse_Regressor.indices
  7314
  7748
  9267
- julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
+julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
 100-element Array{Float64,1}:
    4.62918
    8.59952
