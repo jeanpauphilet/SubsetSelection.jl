@@ -20,8 +20,10 @@ julia> Sparse_Regressor = subsetSelection(OLS(), Constraint(k), Y, X)
 SubsetSelection.SparseEstimator(SubsetSelection.OLS(),SubsetSelection.Constraint(10),10.0,[362,1548,2361,3263,3369,3598,5221,7314,7748,9267],[5.37997,-5.51019,-5.77256,-7.27197,-6.32432,-4.97585,5.94814,4.75648,5.48098,-5.91967],[-0.224588,-1.1446,2.81566,0.582427,-0.923311,4.1153,-2.43833,0.117831,0.0982258,-1.60631  …  0.783925,-1.1055,0.841752,-1.09645,-0.397962,3.48083,-1.33903,1.44676,4.03583,1.05817],0.0,19)
 ```
 
-The algorithm returns a SparseEstimator object with the following fields: loss (Loss function used), sparsity (model to enforce sparsity), indices (features selected), w (value of the estimator on the selected features only), α (values of the associated dual variables), b (bias term), iter (number of iterations required by the algorithm).
-```julia> Sparse_Regressor.indices
+The algorithm returns a SparseEstimator object with the following fields: loss (loss function used), sparsity (model to enforce sparsity), indices (features selected), w (value of the estimator on the selected features only), α (values of the associated dual variables), b (bias term), iter (number of iterations required by the algorithm).
+
+```julia
+julia> Sparse_Regressor.indices
 10-element Array{Int64,1}:
   362
  1548
@@ -59,7 +61,7 @@ The algorithm returns a SparseEstimator object with the following fields: loss (
  ```
 
 For classification, use +1/-1 labels.
- 
+
 ## Required and optional parameters
 
 <!-- `glmnet` has two required parameters: the m x n predictor matrix `X` and the dependent variable `y`. It additionally accepts an optional third argument, `family`, which can be used to specify a generalized linear model. Currently, only `Normal()` (least squares, default), `Binomial()` (logistic), and `Poisson()` are supported, although the glmnet Fortran code also implements a Cox model. For logistic models, `y` is a m x 2 matrix, where the first column is the count of negative responses for each row in `X` and the second column is the count of positive responses. For all other models, `y` is a vector.
