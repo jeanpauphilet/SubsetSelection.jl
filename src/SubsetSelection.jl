@@ -253,4 +253,4 @@ function compute_bias(ℓ::LossFunction, Y, X, α, indices, γ, intercept::Bool)
   end
 end
 
-end
+end #module
