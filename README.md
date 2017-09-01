@@ -7,68 +7,59 @@ SubsetSelection is a Julia package that computes sparse L2-regularized estimator
 
 ## Quick start
 
-<!-- To fit a basic model:
+To fit a basic model:
 
 ```julia
-julia> using SubsetSelection
+julia> using SubsetSelection, StatsBase
 
-julia> y = collect(1:100) + randn(100)*10;
-
-julia> X = [1:100 (1:100)+randn(100)*5 (1:100)+randn(100)*10 (1:100)+randn(100)*20];
-
-julia> path = glmnet(X, y)
-Least Squares GLMNet Solution Path (55 solutions for 4 predictors in 163 passes):
-55x3 DataFrame:
-         df  pct_dev        λ
-[1,]      0      0.0  27.1988
-[2,]      1 0.154843  24.7825
-[3,]      1 0.283396  22.5809
-  :
-[53,]     2 0.911956 0.215546
-[54,]     2 0.911966 0.196397
-[55,]     2 0.911974  0.17895
+julia> n = 100; p = 10000; k = 10;
+julia> indices = sort(sample(1:p, StatsBase.Weights(ones(p)/p), k, replace=false));
+julia> w = sample(-1:2:1, k);
+julia> X = randn(n,p); Y = X[:,indices]*w;
+julia> Sparse_Regressor = subsetSelection(OLS(), Constraint(k), Y, X)
+SubsetSelection.SparseEstimator(SubsetSelection.OLS(),SubsetSelection.Constraint(10),10.0,[362,1548,2361,3263,3369,3598,5221,7314,7748,9267],[5.37997,-5.51019,-5.77256,-7.27197,-6.32432,-4.97585,5.94814,4.75648,5.48098,-5.91967],[-0.224588,-1.1446,2.81566,0.582427,-0.923311,4.1153,-2.43833,0.117831,0.0982258,-1.60631  …  0.783925,-1.1055,0.841752,-1.09645,-0.397962,3.48083,-1.33903,1.44676,4.03583,1.05817],0.0,19)
 ```
 
-`path` represents the Lasso or ElasticNet fits for varying values of λ. The value of the intercept for each λ value are in `path.a0`. The coefficients for each fit are stored in compressed form in `path.betas`.
+The algorithm returns a SparseEstimator object with the following fields: loss (Loss function used), sparsity (model to enforce sparsity), indices (features selected), w (value of the estimator on the selected features only), α (values of the associated dual variables), b (bias term), iter (number of iterations required by the algorithm).
+```julia> Sparse_Regressor.indices
+10-element Array{Int64,1}:
+  362
+ 1548
+ 2361
+ 3263
+ 3369
+ 3598
+ 5221
+ 7314
+ 7748
+ 9267
+ julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
+100-element Array{Float64,1}:
+   4.62918
+   8.59952
+ -16.2796
+  -5.611
+   1.62764
+ -50.4562
+  37.407
+ -12.3341
+  -4.75339
+  25.122
+   ⋮
+  -7.98349
+  11.0327
+  -8.58172
+  16.904
+  -9.04211
+ -36.5475
+  17.2558
+ -22.3915
+ -57.9727
+  -6.06553
+ ```
 
-```julia
-julia> path.betas
-4x55 CompressedPredictorMatrix:
- 0.0  0.083706  0.159976  0.22947  …  0.929157    0.929315  
- 0.0  0.0       0.0       0.0         0.00655753  0.00700862
- 0.0  0.0       0.0       0.0         0.0         0.0       
- 0.0  0.0       0.0       0.0         0.0         0.0
-```
-
-This CompressedPredictorMatrix can be indexed as any other AbstractMatrix, or converted to a Matrix using `convert(Matrix, path.betas)`.
-
-To predict the output for each model along the path for a given set of predictors, use `predict`:
-
-```julia
-julia> predict(path, [22 22+randn()*5 22+randn()*10 22+randn()*20])
-1x55 Array{Float64,2}:
- 51.7098  49.3242  47.1505  45.1699  …  25.1036  25.0878  25.0736
-```
-
-To find the best value of λ by cross-validation, use `glmnetcv`:
-
-```julia
-julia> cv = glmnetcv(X, y)
-Least Squares GLMNet Cross Validation
-55 models for 4 predictors in 10 folds
-Best λ 0.343 (mean loss 76.946, std 12.546)
-
-julia> indmin(cv.meanloss)
-48
-
-julia> cv.path.betas[:, 48]
-4-element Array{Float64,1}:
- 0.926911  
- 0.00366805
- 0.0       
- 0.0
-``` -->
-
+For classification, use +1/-1 labels.
+ 
 ## Required and optional parameters
 
 <!-- `glmnet` has two required parameters: the m x n predictor matrix `X` and the dependent variable `y`. It additionally accepts an optional third argument, `family`, which can be used to specify a generalized linear model. Currently, only `Normal()` (least squares, default), `Binomial()` (logistic), and `Poisson()` are supported, although the glmnet Fortran code also implements a Cox model. For logistic models, `y` is a m x 2 matrix, where the first column is the count of negative responses for each row in `X` and the second column is the count of positive responses. For all other models, `y` is a vector.
