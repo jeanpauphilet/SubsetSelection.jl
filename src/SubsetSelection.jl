@@ -44,40 +44,47 @@ abstract Sparsity
 
 ##SparseEstimator type: output of the algorithm
 type SparseEstimator
-  loss::LossFunction        #Loss function used in the model
-  sparsity::Sparsity        #Model to account for sparsity
-  indices::Array            #Set of relevant indices
-  w::Array{Float64}         #Estimator w on those selected indices
-  α::Array{Float64}         #Dual variables α
-  b::Float64                #Bias term
-  iter::Integer             #Number of iterations in the sug-gradient algorithm
+  "Loss function used in the model"
+  loss::LossFunction
+  "Model to account for sparsity"
+  sparsity::Sparsity
+  "Set of relevant indices"
+  indices::Array
+  "Estimator w on those selected indices"
+  w::Array{Float64}
+  "Dual variables α"
+  α::Array{Float64}
+  "Intercept/bias term"
+  b::Float64
+  "Number of iterations in the sug-gradient algorithm"
+  iter::Integer
 end
 
 ##############################################
 ##DUAL SUB-GRADIENT ALGORITHM
 ##############################################
-# Solve
-#         min_s max_α f(\alpha, s)
-# by gradient ascent on α:        α_{t+1} ← α_t + δ ∇_α f(α_t, s_t)
-# and partial minimization on s:  s_{t+1} ← argmin_s f(α_t, s)
-#
-# INPUT
-# - ℓ           Loss function used
-# - Card        Model to enforce sparsity (constraint or penalty)
-# - Y (n×1)     Vector of outputs. For classification, use ±1 labels
-# - X (n×p)     Array of inputs.
-# - indInit     Initial subset of features s
-# - αInit       Initial dual variable α
-# - γ           ℓ2 regularization penalty
-# - intercept   Boolean. If true, an intercept term is computed as well
-# - maxIter     Total number of Iterations
-# - δ           Gradient stepsize
-# - gradUp      Number of gradient updates of dual variable α performed per update of primal variable s
-# - anticycling Boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another
-# - averaging   Boolean. If true, the dual solution is averaged over past iterates
-#
-# OUTPUT
-# - SparseEstimator
+""" Function to compute a sparse regressor/classifier. Solve an optimization problem of the form
+        min_s max_α f(\alpha, s)
+by gradient ascent on α:        α_{t+1} ← α_t + δ ∇_α f(α_t, s_t)
+and partial minimization on s:  s_{t+1} ← argmin_s f(α_t, s)
+
+INPUTS
+- ℓ           Loss function used
+- Card        Model to enforce sparsity (constraint or penalty)
+- Y (n×1)     Vector of outputs. For classification, use ±1 labels
+- X (n×p)     Array of inputs.
+- indInit     Initial subset of features s
+- αInit       Initial dual variable α
+- γ           ℓ2 regularization penalty
+- intercept   Boolean. If true, an intercept term is computed as well
+- maxIter     Total number of Iterations
+- δ           Gradient stepsize
+- gradUp      Number of gradient updates of dual variable α performed per update of primal variable s
+- anticycling Boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another
+- averaging   Boolean. If true, the dual solution is averaged over past iterates
+
+OUTPUT
+- SparseEstimator """
 function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
