@@ -1,6 +1,8 @@
 module SubsetSelection
 
-export LossFunction, Regression, Classification, OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM, Constraint, BIC, SparseEstimator, subsetSelection
+export LossFunction, Regression, Classification, OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM
+export Sparsity, Constraint, Penalty
+export SparseEstimator, subsetSelection
 
 ##LossFunction type: define the loss function used and its hyper-parameter
 abstract LossFunction
@@ -34,11 +36,11 @@ abstract Sparsity
     return Card.k
   end
 
-  #BIC: add the penalty "+λ ||w||_0"
-  immutable BIC <: Sparsity
+  #Penalty: add the penalty "+λ ||w||_0"
+  immutable Penalty <: Sparsity
     λ::Float64
   end
-  function parameter(Card::BIC)
+  function parameter(Card::Penalty)
     return Card.λ
   end
 
@@ -155,7 +157,7 @@ function ind_init(Card::Constraint, p::Integer)
   end
   return indices0
 end
-function ind_init(Card::BIC, p::Integer)
+function ind_init(Card::Penalty, p::Integer)
   indices0 = find(x-> x<1/2, rand(p))
   while !(length(indices0)>=1)
     indices0 = find(x-> x<1/2, rand(p))
@@ -244,7 +246,7 @@ function partial_min(Card::Constraint, X, α, γ)
   p = size(X,2)
   return sort(sortperm(abs(α'*X)[1:p], rev=true)[1:min(Card.k,p)])
 end
-function partial_min(Card::BIC, X, α, γ)
+function partial_min(Card::Penalty, X, α, γ)
   p = size(X,2)
   return find(x-> x<0, Card.λ .- γ/2*[dot(α, X[:,j])^2 for j in 1:p])
 end

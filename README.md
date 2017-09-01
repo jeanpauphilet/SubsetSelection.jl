@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl.svg?branch=master)](https://travis-ci.org/jeanpauphilet/SubsetSelection.jl)
 [![Coverage Status](https://coveralls.io/repos/jeanpauphilet/SubsetSelection.jl/badge.svg?branch=master)](https://coveralls.io/r/jeanpauphilet/SubsetSelection.jl?branch=master)
 
-SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty (BIC estimators). Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solves its boolean relaxation using a dual sub-gradient approach.
+SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty. Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solves its boolean relaxation using a dual sub-gradient approach.
 
 ## Quick start
 
@@ -66,7 +66,7 @@ For classification, use +1/-1 labels.
 
 `subsetSelection` has four required parameters:
 - the loss function to be minimized, to be chosen among least squares (`OLS()`), L1SVR (`L1SVR(ɛ)`), L2SVR (`L2SVR(ɛ)`), Logistic loss (`LogReg()`), Hinge Loss (`L1SVM()`), L2-SVM (`L2SVM()`).
-- the model used to enforce sparsity; either by adding a hard constraint of the form "||w|| < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||" (`BIC(λ)`) to the objective.
+- the model used to enforce sparsity; either by adding a hard constraint of the form "||w|| < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||" (`Penalty(λ)`) to the objective.
 - the vector of outputs `Y` of size `n`, the sample size. In classification settings, `Y` should be a vector of ±1s.
 - the matrix of covariates `X` of size `n`×`p`, where `n` and `p` are the number of samples and features respectively.
 
