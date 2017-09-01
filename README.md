@@ -20,7 +20,7 @@ julia> Sparse_Regressor = subsetSelection(OLS(), Constraint(k), Y, X)
 SubsetSelection.SparseEstimator(SubsetSelection.OLS(),SubsetSelection.Constraint(10),10.0,[362,1548,2361,3263,3369,3598,5221,7314,7748,9267],[5.37997,-5.51019,-5.77256,-7.27197,-6.32432,-4.97585,5.94814,4.75648,5.48098,-5.91967],[-0.224588,-1.1446,2.81566,0.582427,-0.923311,4.1153,-2.43833,0.117831,0.0982258,-1.60631  …  0.783925,-1.1055,0.841752,-1.09645,-0.397962,3.48083,-1.33903,1.44676,4.03583,1.05817],0.0,19)
 ```
 
-The algorithm returns a SparseEstimator object with the following fields: loss (loss function used), sparsity (model to enforce sparsity), indices (features selected), w (value of the estimator on the selected features only), α (values of the associated dual variables), b (bias term), iter (number of iterations required by the algorithm).
+The algorithm returns a SparseEstimator object with the following fields: `loss` (loss function used), `sparsity` (model to enforce sparsity), `indices` (features selected), `w` (value of the estimator on the selected features only), `α` (values of the associated dual variables), `b` (bias term), `iter` (number of iterations required by the algorithm).
 
 ```julia
 julia> Sparse_Regressor.indices
@@ -67,8 +67,8 @@ For classification, use +1/-1 labels.
 `subsetSelection` has four required parameters:
 - the loss function to be minimized, to be chosen among least squares (`OLS()`), L1SVR (`L1SVR(ɛ)`), L2SVR (`L2SVR(ɛ)`), Logistic loss (`LogReg()`), Hinge Loss (`L1SVM()`), L2-SVM (`L2SVM()`).
 - the model used to enforce sparsity; either by adding a hard constraint of the form "||w|| < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||" (`BIC(λ)`) to the objective.
-- the vector of outputs `Y` of size `n`, the sample size. In classification settings, `Y` should be vector of ±1s.
-- the vector of inputs `X` of size `n`×`p`, where `n` and `p` are the number of samples and features respectively.
+- the vector of outputs `Y` of size `n`, the sample size. In classification settings, `Y` should be a vector of ±1s.
+- the matrix of covariates `X` of size `n`×`p`, where `n` and `p` are the number of samples and features respectively.
 
 In addition, `subsetSelection` accepts the following optional parameters:
 - an initialization for the selected features, `indInit`.
