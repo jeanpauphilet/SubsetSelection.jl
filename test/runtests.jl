@@ -1,4 +1,6 @@
-using SubsetSelection, StatsBase, Base.test
+using SubsetSelection
+using StatsBase
+using Base.Test
 
 n = 500; p = 1000; k = 10;
 
