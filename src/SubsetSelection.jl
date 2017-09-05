@@ -30,7 +30,7 @@ abstract Classification <: LossFunction
 abstract Sparsity
   #Constraint: add the constraint "s.t. ||w||_0<=k"
   immutable Constraint <: Sparsity
-    k::Integer
+    k::Int
   end
   function parameter(Card::Constraint)
     return Card.k
