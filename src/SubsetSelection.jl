@@ -1,6 +1,7 @@
-using Compat
-import Compat.String
 module SubsetSelection
+using Compat
+
+import Compat.String
 
 export LossFunction, Regression, Classification, OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM
 export Sparsity, Constraint, Penalty
