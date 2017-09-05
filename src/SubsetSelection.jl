@@ -1,13 +1,16 @@
 module SubsetSelection
+using Compat
+
+import Compat.String
 
 export LossFunction, Regression, Classification, OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM
 export Sparsity, Constraint, Penalty
 export SparseEstimator, subsetSelection
 
 ##LossFunction type: define the loss function used and its hyper-parameter
-abstract LossFunction
-abstract Regression <: LossFunction
-abstract Classification <: LossFunction
+@compat abstract type LossFunction end
+@compat abstract type Regression <: LossFunction end
+@compat abstract type Classification <: LossFunction end
   #Loss functions for regression
   immutable OLS <: Regression
   end
@@ -27,7 +30,7 @@ abstract Classification <: LossFunction
   end
 
 ##Sparsity type: specify how sparsity is enforced, constrained or penalized
-abstract Sparsity
+@compat abstract type Sparsity end
   #Constraint: add the constraint "s.t. ||w||_0<=k"
   immutable Constraint <: Sparsity
     k::Int
@@ -114,7 +117,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     end
 
     #Update average a
-    @. a = (iter - 1) / iter * a + 1 / iter * α
+    @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
 
     #Minimization w.r.t. s
     indices_old = indices[:]
@@ -207,7 +210,7 @@ function grad_dual(ℓ::LossFunction, Y, X, α, indices, γ)
   end
   for j in indices
     x = @view(X[:, j])
-    @. g -= γ * dot(x, α) * x
+    @__dot__ g -= γ * dot(x, α) * x
   end
   return g
 end
