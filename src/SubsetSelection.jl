@@ -108,13 +108,13 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, length(indices)))
-      α = α + δ*grad_dual(ℓ, Y, X, α, indices, γ)
+      α .+= δ .* grad_dual(ℓ, Y, X, α, indices, γ)
       α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
 
     #Update average a
-    a = (iter-1)/(iter)*a + 1/iter*α
+    @. a = (iter - 1) / iter * a + 1 / iter * α
 
     #Minimization w.r.t. s
     indices_old = indices[:]
@@ -206,7 +206,8 @@ function grad_dual(ℓ::LossFunction, Y, X, α, indices, γ)
     g[i] = - grad_fenchel(ℓ, Y[i], α[i])
   end
   for j in indices
-    g -= γ*dot(X[:,j], α)*X[:,j]
+    x = @view(X[:, j])
+    @. g -= γ * dot(x, α) * x
   end
   return g
 end
