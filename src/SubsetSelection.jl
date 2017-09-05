@@ -1,3 +1,5 @@
+using Compat
+import Compat.String
 module SubsetSelection
 
 export LossFunction, Regression, Classification, OLS, L1SVR, L2SVR, LogReg, L1SVM, L2SVM
@@ -5,9 +7,9 @@ export Sparsity, Constraint, Penalty
 export SparseEstimator, subsetSelection
 
 ##LossFunction type: define the loss function used and its hyper-parameter
-abstract type LossFunction end
-abstract type Regression <: LossFunction end
-abstract type Classification <: LossFunction end
+@compat abstract type LossFunction end
+@compat abstract type Regression <: LossFunction end
+@compat abstract type Classification <: LossFunction end
   #Loss functions for regression
   immutable OLS <: Regression
   end
@@ -27,7 +29,7 @@ abstract type Classification <: LossFunction end
   end
 
 ##Sparsity type: specify how sparsity is enforced, constrained or penalized
-abstract type Sparsity end
+@compat abstract type Sparsity end
   #Constraint: add the constraint "s.t. ||w||_0<=k"
   immutable Constraint <: Sparsity
     k::Integer
