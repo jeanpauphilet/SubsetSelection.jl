@@ -204,15 +204,14 @@ end
 
 ##Gradient of f w.r.t. the dual variable α
 function grad_dual(ℓ::LossFunction, Y, X, α, indices, γ)
-  g = zeros(size(X,1))
-  for i in 1:size(X,1)
-    g[i] = - grad_fenchel(ℓ, Y[i], α[i])
+  for i in 1:size(X, 1)
+    g_cache[i] = -grad_fenchel(ℓ, Y[i], α[i])
   end
   for j in indices
     x = @view(X[:, j])
-    @__dot__ g -= γ * dot(x, α) * x
+    @__dot__ g_cache -= γ * dot(x, α) * x
   end
-  return g
+  g_cache
 end
 
 ##Projection of α on the feasible set of the Fenchel conjugate
@@ -245,10 +244,21 @@ function proj_intercept(intercept::Bool, α)
   end
 end
 
+# TODO move this somewhere
+const g_cache = Vector{Float64}(5_000)
+const ax_cache = Vector{Float64}(10_000)
+const sortperm_cache = Vector{Int}(10_000)
+
 ##Minimization w.r.t. s
 function partial_min(Card::Constraint, X, α, γ)
   p = size(X,2)
-  return sort(sortperm(abs(α'*X)[1:p], rev=true)[1:min(Card.k,p)])
+  # compute α'*X into pre-allocated scratch space
+  Ac_mul_B!(ax_cache, X, α)
+  # take the k largest (absolute) values of ax_cache
+  map!(abs, ax_cache, ax_cache)
+  sortperm!(sortperm_cache, ax_cache, rev=true)
+  indices = sortperm_cache[1:n_indices]
+  sort!(indices)
 end
 function partial_min(Card::Penalty, X, α, γ)
   p = size(X,2)
