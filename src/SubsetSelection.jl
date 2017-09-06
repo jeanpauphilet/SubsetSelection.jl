@@ -38,6 +38,7 @@ export SparseEstimator, subsetSelection
   function parameter(Card::Constraint)
     return Card.k
   end
+  max_index_size(Card::Constraint, p::Int) = min(Card.k, p)
 
   #Penalty: add the penalty "+λ ||w||_0"
   immutable Penalty <: Sparsity
@@ -46,6 +47,7 @@ export SparseEstimator, subsetSelection
   function parameter(Card::Penalty)
     return Card.λ
   end
+  max_index_size(Card::Penalty, p::Int) = p
 
 ##SparseEstimator type: output of the algorithm
 type SparseEstimator
@@ -63,6 +65,21 @@ type SparseEstimator
   b::Float64
   "Number of iterations in the sug-gradient algorithm"
   iter::Integer
+end
+
+# Type to hold preallocated memory
+immutable Cache
+  g::Vector{Float64}
+  ax::Vector{Float64}
+  sortperm::Vector{Int}
+
+  function Cache(n::Int, p::Int)
+    new(
+      Vector{Float64}(n),
+      Vector{Float64}(p),
+      Vector{Int}(p),
+    )
+  end
 end
 
 ##############################################
@@ -98,9 +115,15 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
   n = size(Y, 1)
   p = size(X, 2)
+  cache = Cache(n, p)
 
   indices = indInit #Support
-  indices_old = Vector{Int}(min(Card.k,p))
+  n_indices = length(indices)
+
+  n_indices_max = max_index_size(Card, p)
+  resize!(indices, n_indices_max)
+  indices_old = Vector{Int}(n_indices_max)
+
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
@@ -111,8 +134,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     # println("Iterations: ", iter)
 
     #Gradient ascent on α
-    for inner_iter in 1:min(gradUp, div(p, length(indices)))
-      α .+= δ .* grad_dual(ℓ, Y, X, α, indices, γ)
+    for inner_iter in 1:min(gradUp, div(p, n_indices))
+      α .+= δ .* grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
       α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
@@ -121,11 +144,11 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
 
     #Minimization w.r.t. s
-    indices_old[1:length(indices)] = indices[:]
-    partial_min(indices, Card, X, α, γ)
+    indices_old[1:n_indices] = indices[1:n_indices]
+    n_indices = partial_min!(indices, Card, X, α, γ, cache)
 
     #Anticycling rule: Stop if indices_old == indices
-    if anticycling && (indices == indices_old)
+    if anticycling && indices_same(indices, indices_old, n_indices)
       averaging = false #If the algorithm stops because of cycling, averaging is not needed
       break
     else
@@ -135,13 +158,25 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
   ##Compute sparse estimator
   #Subset of relevant features
-  partial_min(indices, Card, X, averaging ? a : α, γ)
+  n_indices = partial_min!(indices, Card, X, averaging ? a : α, γ, cache)
   #Regressor
-  w = [-γ * dot(X[:,j], a) for j in indices]
+  w = [-γ * dot(X[:, indices[j]], a) for j in 1:n_indices]
   #Bias
-  b = compute_bias(ℓ, Y, X, a, indices, γ, intercept)
+  b = compute_bias(ℓ, Y, X, a, indices, n_indices, γ, intercept, cache)
 
   return SparseEstimator(ℓ, Card, indices, w, a, b, iter)
+end
+
+# Helper to check if indices and indices_old are the same
+# Equivalent to `indices[1:n_indices] == indices_old[1:n_indices]` but without
+# allocating temp arrays
+function indices_same(indices, indices_old, n_indices)
+  for j = 1:n_indices
+    if indices[j] != indices_old[j]
+      return false
+    end
+  end
+  true
 end
 
 
@@ -200,15 +235,16 @@ function grad_fenchel(ℓ::L2SVM, y, a)
 end
 
 ##Gradient of f w.r.t. the dual variable α
-function grad_dual(ℓ::LossFunction, Y, X, α, indices, γ)
+function grad_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ, cache::Cache)
+  g = cache.g
   for i in 1:size(X, 1)
-    g_cache[i] = -grad_fenchel(ℓ, Y[i], α[i])
+    g[i] = -grad_fenchel(ℓ, Y[i], α[i])
   end
-  for j in indices
-    x = @view(X[:, j])
-    @__dot__ g_cache -= γ * dot(x, α) * x
+  for j in 1:n_indices
+    x = @view(X[:, indices[j]])
+    @__dot__ g -= γ * dot(x, α) * x
   end
-  g_cache
+  g
 end
 
 ##Projection of α on the feasible set of the Fenchel conjugate
@@ -241,24 +277,24 @@ function proj_intercept(intercept::Bool, α)
   end
 end
 
-# TODO move this somewhere
-const g_cache = Vector{Float64}(5_000)
-const ax_cache = Vector{Float64}(10_000)
-const sortperm_cache = Vector{Int}(10_000)
-
 ##Minimization w.r.t. s
-function partial_min(indices, Card::Constraint, X, α, γ)
-  p = size(X,2)
-  # compute α'*X into pre-allocated scratch space
-  Ac_mul_B!(ax_cache, X, α)
-  # take the k largest (absolute) values of ax_cache
-  map!(abs, ax_cache, ax_cache)
-  sortperm!(sortperm_cache, ax_cache, rev=true)
+function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
+  ax = cache.ax
+  sortperm = cache.sortperm
 
-  n_indices = min(Card.k,p)
-  length(indices) < n_indices && resize!(indices, n_indices)
-  indices[:] = sortperm_cache[1:n_indices]
-  sort!(indices)
+  p = size(X,2)
+  n_indices = max_index_size(Card, p)
+
+  # compute α'*X into pre-allocated scratch space
+  Ac_mul_B!(ax, X, α)
+  # take the k largest (absolute) values of ax
+  map!(abs, ax, ax)
+  sortperm!(sortperm, ax, rev=true)
+  indices[:] = sortperm[1:n_indices]
+  sort!(@view(indices[1:n_indices]))
+
+  # Return the updated size of indices
+  return n_indices
 end
 function partial_min(Card::Penalty, X, α, γ)
   p = size(X,2)
