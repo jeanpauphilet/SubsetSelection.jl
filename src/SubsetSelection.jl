@@ -164,6 +164,9 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   #Bias
   b = compute_bias(ℓ, Y, X, a, indices, n_indices, γ, intercept, cache)
 
+  #Resize final indices vector to only have relevant entries
+  resize!(indices, n_indices)
+
   return SparseEstimator(ℓ, Card, indices, w, a, b, iter)
 end
 
