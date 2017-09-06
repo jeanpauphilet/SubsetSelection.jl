@@ -270,8 +270,8 @@ end
 ##Projection of α on e^T α = 0 (if intercept)
 function proj_intercept(intercept::Bool, α)
   if intercept
-    n = size(α, 1)
-    return α - dot(α, ones(n))/n*ones(n)
+    α .-= mean(α)
+    return α
   else
     return α
   end
@@ -302,9 +302,10 @@ function partial_min(Card::Penalty, X, α, γ)
 end
 
 ##Bias term
-function compute_bias(ℓ::LossFunction, Y, X, α, indices, γ, intercept::Bool)
+function compute_bias(ℓ::LossFunction, Y, X, α, indices, n_indices, γ,
+                      intercept::Bool, cache::Cache)
   if intercept
-    g = grad_dual(ℓ, Y, X, α, indices, γ)
+    g = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
     return (minimum(g[α != 0.]) + maximum(g[α != 0.]))/2
   else
     return 0.
