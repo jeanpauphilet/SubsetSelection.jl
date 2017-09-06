@@ -299,9 +299,24 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   # Return the updated size of indices
   return n_indices
 end
-function partial_min(Card::Penalty, X, α, γ)
-  p = size(X,2)
-  return find(x-> x<0, Card.λ .- γ/2*[dot(α, X[:,j])^2 for j in 1:p])
+
+function partial_min!(indices, Card::Penalty, X, α, γ, cache::Cache)
+  ax = cache.ax
+
+  # compute (α'*X).^2 into pre-allocated scratch space
+  Ac_mul_B!(ax, X, α)
+  map!(abs2, ax, ax)
+
+  # find indices with `λ - γ / 2 * (a'X_j)^2 < 0`
+  n_indices = 0
+  for j = 1:size(X,2)
+    if Card.λ - γ / 2 * ax[j] < 0
+      n_indices += 1
+      indices[n_indices] = j
+    end
+  end
+
+  return n_indices
 end
 
 ##Bias term
