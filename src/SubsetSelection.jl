@@ -100,6 +100,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   p = size(X, 2)
 
   indices = indInit #Support
+  indices_old = Vector{Int}(min(Card.k,p))
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
@@ -120,8 +121,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
 
     #Minimization w.r.t. s
-    indices_old = indices[:]
-    indices = partial_min(Card, X, α, γ)
+    indices_old[1:length(indices)] = indices[:]
+    partial_min(indices, Card, X, α, γ)
 
     #Anticycling rule: Stop if indices_old == indices
     if anticycling && (indices == indices_old)
@@ -133,16 +134,12 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   end
 
   ##Compute sparse estimator
-    #Subset of relevant features
-    if averaging
-      indices = partial_min(Card, X, a, γ)
-    else
-      indices = partial_min(Card, X, α, γ)
-    end
-    #Regressor
-    w = [-γ*dot(X[:,j], a) for j in indices]
-    #Bias
-    b = compute_bias(ℓ, Y, X, a, indices, γ, intercept)
+  #Subset of relevant features
+  partial_min(indices, Card, X, averaging ? a : α, γ)
+  #Regressor
+  w = [-γ * dot(X[:,j], a) for j in indices]
+  #Bias
+  b = compute_bias(ℓ, Y, X, a, indices, γ, intercept)
 
   return SparseEstimator(ℓ, Card, indices, w, a, b, iter)
 end
@@ -250,14 +247,17 @@ const ax_cache = Vector{Float64}(10_000)
 const sortperm_cache = Vector{Int}(10_000)
 
 ##Minimization w.r.t. s
-function partial_min(Card::Constraint, X, α, γ)
+function partial_min(indices, Card::Constraint, X, α, γ)
   p = size(X,2)
   # compute α'*X into pre-allocated scratch space
   Ac_mul_B!(ax_cache, X, α)
   # take the k largest (absolute) values of ax_cache
   map!(abs, ax_cache, ax_cache)
   sortperm!(sortperm_cache, ax_cache, rev=true)
-  indices = sortperm_cache[1:n_indices]
+
+  n_indices = min(Card.k,p)
+  length(indices) < n_indices && resize!(indices, n_indices)
+  indices[:] = sortperm_cache[1:n_indices]
   sort!(indices)
 end
 function partial_min(Card::Penalty, X, α, γ)
