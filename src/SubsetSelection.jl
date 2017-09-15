@@ -247,7 +247,7 @@ end
 ##Minimization w.r.t. s
 function partial_min(Card::Constraint, X, α, γ)
   p = size(X,2)
-  return sort(sortperm(abs(α'*X)[1:p], rev=true)[1:min(Card.k,p)])
+  return sort(sortperm(abs.(X'*α)[1:p], rev=true)[1:min(Card.k,p)])
 end
 function partial_min(Card::Penalty, X, α, γ)
   p = size(X,2)
