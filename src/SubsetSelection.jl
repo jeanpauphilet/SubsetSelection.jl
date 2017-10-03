@@ -33,11 +33,12 @@ export SparseEstimator, subsetSelection
 @compat abstract type Sparsity end
   #Constraint: add the constraint "s.t. ||w||_0<=k"
   immutable Constraint <: Sparsity
-    k::Integer
+    k::Int
   end
   function parameter(Card::Constraint)
     return Card.k
   end
+  max_index_size(Card::Constraint, p::Int) = min(Card.k, p)
 
   #Penalty: add the penalty "+λ ||w||_0"
   immutable Penalty <: Sparsity
@@ -46,6 +47,7 @@ export SparseEstimator, subsetSelection
   function parameter(Card::Penalty)
     return Card.λ
   end
+  max_index_size(Card::Penalty, p::Int) = p
 
 ##SparseEstimator type: output of the algorithm
 type SparseEstimator
@@ -65,11 +67,26 @@ type SparseEstimator
   iter::Integer
 end
 
+# Type to hold preallocated memory
+immutable Cache
+  g::Vector{Float64}
+  ax::Vector{Float64}
+  sortperm::Vector{Int}
+
+  function Cache(n::Int, p::Int)
+    new(
+      Vector{Float64}(n),
+      Vector{Float64}(p),
+      Vector{Int}(p),
+    )
+  end
+end
+
 ##############################################
 ##DUAL SUB-GRADIENT ALGORITHM
 ##############################################
 """ Function to compute a sparse regressor/classifier. Solve an optimization problem of the form
-        min_s max_α f(\alpha, s)
+        min_s max_α f(α, s)
 by gradient ascent on α:        α_{t+1} ← α_t + δ ∇_α f(α_t, s_t)
 and partial minimization on s:  s_{t+1} ← argmin_s f(α_t, s)
 
@@ -98,8 +115,15 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
   n = size(Y, 1)
   p = size(X, 2)
+  cache = Cache(n, p)
 
   indices = indInit #Support
+  n_indices = length(indices)
+
+  n_indices_max = max_index_size(Card, p)
+  resize!(indices, n_indices_max)
+  indices_old = Vector{Int}(n_indices_max)
+
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
@@ -110,21 +134,21 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     # println("Iterations: ", iter)
 
     #Gradient ascent on α
-    for inner_iter in 1:min(gradUp, div(p, length(indices)))
-      α = α + δ*grad_dual(ℓ, Y, X, α, indices, γ)
+    for inner_iter in 1:min(gradUp, div(p, n_indices))
+      α .+= δ .* grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
       α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
 
     #Update average a
-    a = (iter-1)/(iter)*a + 1/iter*α
+    @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
 
     #Minimization w.r.t. s
-    indices_old = indices[:]
-    indices = partial_min(Card, X, α, γ)
+    indices_old[1:n_indices] = indices[1:n_indices]
+    n_indices = partial_min!(indices, Card, X, α, γ, cache)
 
     #Anticycling rule: Stop if indices_old == indices
-    if anticycling && (indices == indices_old)
+    if anticycling && indices_same(indices, indices_old, n_indices)
       averaging = false #If the algorithm stops because of cycling, averaging is not needed
       break
     else
@@ -133,18 +157,29 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   end
 
   ##Compute sparse estimator
-    #Subset of relevant features
-    if averaging
-      indices = partial_min(Card, X, a, γ)
-    else
-      indices = partial_min(Card, X, α, γ)
-    end
-    #Regressor
-    w = [-γ*dot(X[:,j], a) for j in indices]
-    #Bias
-    b = compute_bias(ℓ, Y, X, a, indices, γ, intercept)
+  #Subset of relevant features
+  n_indices = partial_min!(indices, Card, X, averaging ? a : α, γ, cache)
+  #Regressor
+  w = [-γ * dot(X[:, indices[j]], a) for j in 1:n_indices]
+  #Bias
+  b = compute_bias(ℓ, Y, X, a, indices, n_indices, γ, intercept, cache)
+
+  #Resize final indices vector to only have relevant entries
+  resize!(indices, n_indices)
 
   return SparseEstimator(ℓ, Card, indices, w, a, b, iter)
+end
+
+# Helper to check if indices and indices_old are the same
+# Equivalent to `indices[1:n_indices] == indices_old[1:n_indices]` but without
+# allocating temp arrays
+function indices_same(indices, indices_old, n_indices)
+  for j = 1:n_indices
+    if indices[j] != indices_old[j]
+      return false
+    end
+  end
+  true
 end
 
 
@@ -203,15 +238,16 @@ function grad_fenchel(ℓ::L2SVM, y, a)
 end
 
 ##Gradient of f w.r.t. the dual variable α
-function grad_dual(ℓ::LossFunction, Y, X, α, indices, γ)
-  g = zeros(size(X,1))
-  for i in 1:size(X,1)
-    g[i] = - grad_fenchel(ℓ, Y[i], α[i])
+function grad_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ, cache::Cache)
+  g = cache.g
+  for i in 1:size(X, 1)
+    g[i] = -grad_fenchel(ℓ, Y[i], α[i])
   end
-  for j in indices
-    g -= γ*dot(X[:,j], α)*X[:,j]
+  for j in 1:n_indices
+    x = @view(X[:, indices[j]])
+    @__dot__ g -= γ * dot(x, α) * x
   end
-  return g
+  g
 end
 
 ##Projection of α on the feasible set of the Fenchel conjugate
@@ -237,27 +273,57 @@ end
 ##Projection of α on e^T α = 0 (if intercept)
 function proj_intercept(intercept::Bool, α)
   if intercept
-    n = size(α, 1)
-    return α - dot(α, ones(n))/n*ones(n)
+    α .-= mean(α)
+    return α
   else
     return α
   end
 end
 
 ##Minimization w.r.t. s
-function partial_min(Card::Constraint, X, α, γ)
+function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
+  ax = cache.ax
+  sortperm = cache.sortperm
+
   p = size(X,2)
-  return sort(sortperm(abs.(X'*α)[1:p], rev=true)[1:min(Card.k,p)])
+  n_indices = max_index_size(Card, p)
+
+  # compute α'*X into pre-allocated scratch space
+  Ac_mul_B!(ax, X, α)
+  # take the k largest (absolute) values of ax
+  map!(abs, ax, ax)
+  sortperm!(sortperm, ax, rev=true)
+  indices[:] = sortperm[1:n_indices]
+  sort!(@view(indices[1:n_indices]))
+
+  # Return the updated size of indices
+  return n_indices
 end
-function partial_min(Card::Penalty, X, α, γ)
-  p = size(X,2)
-  return find(x-> x<0, Card.λ .- γ/2*[dot(α, X[:,j])^2 for j in 1:p])
+
+function partial_min!(indices, Card::Penalty, X, α, γ, cache::Cache)
+  ax = cache.ax
+
+  # compute (α'*X).^2 into pre-allocated scratch space
+  Ac_mul_B!(ax, X, α)
+  map!(abs2, ax, ax)
+
+  # find indices with `λ - γ / 2 * (a'X_j)^2 < 0`
+  n_indices = 0
+  for j = 1:size(X,2)
+    if Card.λ - γ / 2 * ax[j] < 0
+      n_indices += 1
+      indices[n_indices] = j
+    end
+  end
+
+  return n_indices
 end
 
 ##Bias term
-function compute_bias(ℓ::LossFunction, Y, X, α, indices, γ, intercept::Bool)
+function compute_bias(ℓ::LossFunction, Y, X, α, indices, n_indices, γ,
+                      intercept::Bool, cache::Cache)
   if intercept
-    g = grad_dual(ℓ, Y, X, α, indices, γ)
+    g = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
     return (minimum(g[α != 0.]) + maximum(g[α != 0.]))/2
   else
     return 0.
