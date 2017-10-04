@@ -95,15 +95,15 @@ INPUTS
 - Card        Model to enforce sparsity (constraint or penalty)
 - Y (n×1)     Vector of outputs. For classification, use ±1 labels
 - X (n×p)     Array of inputs.
-- indInit     Initial subset of features s
-- αInit       Initial dual variable α
-- γ           ℓ2 regularization penalty
-- intercept   Boolean. If true, an intercept term is computed as well
-- maxIter     Total number of Iterations
-- δ           Gradient stepsize
-- gradUp      Number of gradient updates of dual variable α performed per update of primal variable s
-- anticycling Boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another
-- averaging   Boolean. If true, the dual solution is averaged over past iterates
+- indInit     (optional) Initial subset of features s
+- αInit       (optional) Initial dual variable α
+- γ           (optional) ℓ2 regularization penalty
+- intercept   (optional) Boolean. If true, an intercept term is computed as well
+- maxIter     (optional) Total number of Iterations
+- δ           (optional) Gradient stepsize
+- gradUp      (optional) Number of gradient updates of dual variable α performed per update of primal variable s
+- anticycling (optional) Boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another
+- averaging   (optional) Boolean. If true, the dual solution is averaged over past iterates
 
 OUTPUT
 - SparseEstimator """
@@ -127,7 +127,6 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
-
   ##Dual Sub-gradient Algorithm
   iter = 2
   while iter < maxIter
@@ -136,7 +135,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
       g = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-      α .+= δ .* g /norm(g)^2
+      α .+= (1e-2/iter) .* g / (norm(g))
       α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
@@ -216,6 +215,38 @@ function alpha_init(ℓ::L2SVR, Y)
 end
 function alpha_init(ℓ::Classification, Y)
   return -Y./2
+end
+
+##Point-wise value of the Fenchel conjugate for each loss function
+function fenchel(ℓ::OLS, y, a)
+  return .5*a^2 + a*y
+end
+function fenchel(ℓ::L1SVR, y, a)
+  return y*a + ℓ.ɛ*abs(a)
+end
+function fenchel(ℓ::L2SVR, y, a)
+  return .5*a^2 + y*a + ℓ.ɛ*abs(a)
+end
+function fenchel(ℓ::LogReg, y, a)
+  return (1+a*y)*log(1+a*y) - a*y*log(-a*y)
+end
+function fenchel(ℓ::L1SVM, y, a)
+  return a*y
+end
+function fenchel(ℓ::L2SVM, y, a)
+  return .5*a^2 + a*y
+end
+
+##Dual objective function value for a given dual variable α
+function dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ)
+  v = 0.
+  for i in 1:size(X, 1)
+    v += -fenchel(ℓ, Y[i], α[i])
+  end
+  for j in 1:n_indices
+    v -= γ/2*(dot(X[:, indices[j]], α)^2)
+  end
+  return v
 end
 
 ##Point-wise derivative of the Fenchel conjugate for each loss function
