@@ -122,8 +122,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
   n_indices_max = max_index_size(Card, p)
   resize!(indices, n_indices_max)
-  indices_old = Vector{Int}(n_indices_max)
 
+  indices_old = Vector{Int}(n_indices_max)
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
@@ -134,14 +134,14 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
-      g = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-      α .+= δ.* g
-      α = proj_dual(ℓ, Y, α)
+      α .+= δ*grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
+      α = proj_dual(ℓ, α, Y)
       α = proj_intercept(intercept, α)
     end
 
     #Update average a
-    @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
+    # @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
+    a = (iter - 1) / iter * a .+ 1 / iter * α
 
     #Minimization w.r.t. s
     indices_old[1:n_indices] = indices[1:n_indices]
@@ -277,7 +277,9 @@ function grad_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ, cache::C
   end
   for j in 1:n_indices
     x = @view(X[:, indices[j]])
-    @__dot__ g -= γ * dot(x, α) * x
+    # @__dot__ g -= γ * dot(x, α) * x
+    g .-= γ*dot(x, α)*x
+
   end
   g
 end
@@ -306,10 +308,8 @@ end
 function proj_intercept(intercept::Bool, α)
   if intercept
     α .-= mean(α)
-    return α
-  else
-    return α
   end
+  α
 end
 
 ##Minimization w.r.t. s
@@ -324,8 +324,9 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   Ac_mul_B!(ax, X, α)
   # take the k largest (absolute) values of ax
   map!(abs, ax, ax)
+
   sortperm!(sortperm, ax, rev=true)
-  indices[:] = sortperm[1:n_indices]
+  indices[1:n_indices] = sortperm[1:n_indices]
   sort!(@view(indices[1:n_indices]))
 
   # Return the updated size of indices
