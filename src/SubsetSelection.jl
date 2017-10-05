@@ -327,7 +327,7 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
 
   sortperm!(sortperm, ax, rev=true)
   indices[1:n_indices] = sortperm[1:n_indices]
-  sort!(indices[1:n_indices])
+  sort!(@view(indices[1:n_indices]))
 
   # Return the updated size of indices
   return n_indices
