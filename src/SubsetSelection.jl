@@ -276,7 +276,7 @@ function grad_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ, cache::C
     g[i] = -grad_fenchel(ℓ, Y[i], α[i])
   end
   for j in 1:n_indices
-    x = @view(X[:, indices[j]])
+    x = X[:, indices[j]]
     # @__dot__ g -= γ * dot(x, α) * x
     g .-= γ*dot(x, α)*x
 
