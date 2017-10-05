@@ -135,7 +135,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
       g = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-      α .+= (1e-2/iter) .* g / (norm(g))
+      α .+= δ.* g
       α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
