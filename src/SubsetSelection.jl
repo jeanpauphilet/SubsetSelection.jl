@@ -117,6 +117,10 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   p = size(X, 2)
   cache = Cache(n, p)
 
+  cache_g = zeros(n)
+  cache_ax = zeros(p)
+  cache_sortperm = zeros(p)
+
   indices = indInit #Support
   n_indices = length(indices)
 
@@ -134,14 +138,15 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
-      α .+= δ*grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-      α = proj_dual(ℓ, α, Y)
+      ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
+      α .+= δ*∇
+      α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
 
     #Update average a
-    # @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
-    a = (iter - 1) / iter * a .+ 1 / iter * α
+    @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
+    # a *= (iter - 1)/iter; a .+= α/iter
 
     #Minimization w.r.t. s
     indices_old[1:n_indices] = indices[1:n_indices]
@@ -276,10 +281,9 @@ function grad_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ, cache::C
     g[i] = -grad_fenchel(ℓ, Y[i], α[i])
   end
   for j in 1:n_indices
-    x = X[:, indices[j]]
+    x = @view(X[:, indices[j]])
     # @__dot__ g -= γ * dot(x, α) * x
-    g .-= γ*dot(x, α)*x
-
+    g -= γ*dot(x, α)*x
   end
   g
 end
@@ -309,14 +313,13 @@ function proj_intercept(intercept::Bool, α)
   if intercept
     α .-= mean(α)
   end
-  α
+  return α
 end
 
 ##Minimization w.r.t. s
 function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   ax = cache.ax
-  sortperm = cache.sortperm
-
+  perm = cache.sortperm
   p = size(X,2)
   n_indices = max_index_size(Card, p)
 
@@ -325,8 +328,8 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   # take the k largest (absolute) values of ax
   map!(abs, ax, ax)
 
-  sortperm!(sortperm, ax, rev=true)
-  indices[1:n_indices] = sortperm[1:n_indices]
+  sortperm!(perm, ax, rev=true)
+  indices[1:n_indices] = perm[1:n_indices]
   sort!(@view(indices[1:n_indices]))
 
   # Return the updated size of indices
