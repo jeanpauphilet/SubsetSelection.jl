@@ -117,10 +117,6 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   p = size(X, 2)
   cache = Cache(n, p)
 
-  cache_g = zeros(n)
-  cache_ax = zeros(p)
-  cache_sortperm = zeros(p)
-
   indices = indInit #Support
   n_indices = length(indices)
 
