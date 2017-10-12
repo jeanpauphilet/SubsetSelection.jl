@@ -5,6 +5,10 @@
 SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty. Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solves its boolean relaxation using a dual sub-gradient approach.
 
 ## Quick start
+To install the package:
+```julia
+julia> Pkg.install("SubsetSelection")
+```
 
 To fit a basic model:
 
@@ -65,7 +69,7 @@ For classification, use +1/-1 labels.
 
 `subsetSelection` has four required parameters:
 - the loss function to be minimized, to be chosen among least squares (`OLS()`), L1SVR (`L1SVR(ɛ)`), L2SVR (`L2SVR(ɛ)`), Logistic loss (`LogReg()`), Hinge Loss (`L1SVM()`), L2-SVM (`L2SVM()`).
-- the model used to enforce sparsity; either by adding a hard constraint of the form "||w|| < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||" (`Penalty(λ)`) to the objective.
+- the model used to enforce sparsity; either by adding a hard constraint of the form "||w||_0 < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||_0" (`Penalty(λ)`) to the objective.
 - the vector of outputs `Y` of size `n`, the sample size. In classification settings, `Y` should be a vector of ±1s.
 - the matrix of covariates `X` of size `n`×`p`, where `n` and `p` are the number of samples and features respectively.
 
@@ -81,8 +85,3 @@ In addition, `subsetSelection` accepts the following optional parameters:
  - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
 ## Reference
-
- <!-- - [Lasso.jl](https://github.com/simonster/Lasso.jl), a pure Julia implementation of the glmnet coordinate descent algorithm that often achieves better performance.
- - [LARS.jl](https://github.com/simonster/LARS.jl), an implementation
-   of least angle regression for fitting entire linear (but not
-   generalized linear) Lasso and Elastic Net coordinate paths. -->
