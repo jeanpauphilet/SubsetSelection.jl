@@ -38,7 +38,7 @@ export SparseEstimator, subsetSelection
   function parameter(Card::Constraint)
     return Card.k
   end
-  max_index_size(Card::Constraint, p::Int) = min(Card.k, p)
+  max_index_size(Card::Constraint, p::Int) = min.(Card.k, p)
 
   #Penalty: add the penalty "+λ ||w||_0"
   immutable Penalty <: Sparsity
@@ -209,7 +209,7 @@ function alpha_init(ℓ::OLS, Y)
   return -Y
 end
 function alpha_init(ℓ::L1SVR, Y)
-  return max(-1,min(1, -Y))
+  return max.(-1,min.(1, -Y))
 end
 function alpha_init(ℓ::L2SVR, Y)
   return -Y
@@ -289,19 +289,19 @@ function proj_dual(ℓ::OLS, Y, α)
   return α
 end
 function proj_dual(ℓ::L1SVR, Y, α)
-  return max(-1,min(1, α))
+  return max.(-1,min.(1, α))
 end
 function proj_dual(ℓ::L2SVR, Y, α)
   return α
 end
 function proj_dual(ℓ::LogReg, Y, α)
-  return Y.*max(-1,min(0, Y.*α))
+  return Y.*max.(-1,min.(0, Y.*α))
 end
 function proj_dual(ℓ::L1SVM, Y, α)
-  return Y.*max(-1,min(0, Y.*α))
+  return Y.*max.(-1,min.(0, Y.*α))
 end
 function proj_dual(ℓ::L2SVM, Y, α)
-  return Y.*min(0, Y.*α)
+  return Y.*min.(0, Y.*α)
 end
 
 ##Projection of α on e^T α = 0 (if intercept)
