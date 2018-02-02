@@ -55,9 +55,13 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     maxIter = 100, δ = 1e-3, gradUp = 10,
     anticycling = false, averaging = true)
 
-  n = size(Y, 1)
-  p = size(X, 2)
+  n,p = size(X)
   cache = Cache(n, p)
+
+  if size(Y,1) != n
+    throw(DimensionMismatch("X and Y must have the same number of rows"))
+  end
+
 
   indices = indInit #Support
   n_indices = length(indices)
