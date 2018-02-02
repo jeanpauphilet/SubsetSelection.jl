@@ -58,8 +58,17 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   n,p = size(X)
   cache = Cache(n, p)
 
+  #Add sanity checks
   if size(Y,1) != n
     throw(DimensionMismatch("X and Y must have the same number of rows"))
+  end
+  if isa(ℓ, SubsetSelection.Classification)
+    levels = sort(unique(Y))
+    if length(levels) != 2
+      throw(ArgumentError("subsetSelection only supports two-class classification"))
+    elseif (levels[1] != -1) || (levels[2] != 1)
+      throw(ArgumentError("Class labels must be ±1's"))
+    end
   end
 
 
