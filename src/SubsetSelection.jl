@@ -130,7 +130,6 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   ##Dual Sub-gradient Algorithm
   iter = 2
   @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
-    # println("Iterations: ", iter)
 
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
@@ -152,8 +151,6 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     if anticycling && indices_same(indices, indices_old, n_indices)
       averaging = false #If the algorithm stops because of cycling, averaging is not needed
       break
-    # else
-    #   iter += 1
     end
   end
 
