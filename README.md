@@ -69,8 +69,8 @@ For classification, use +1/-1 labels.
 ## Required and optional parameters
 
 `subsetSelection` has four required parameters:
-- the loss function to be minimized, to be chosen among least squares (`OLS()`), L1SVR (`L1SVR(ɛ)`), L2SVR (`L2SVR(ɛ)`), Logistic loss (`LogReg()`), Hinge Loss (`L1SVM()`), L2-SVM (`L2SVM()`).
-- the model used to enforce sparsity; either by adding a hard constraint of the form "||w||_0 < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||_0" (`Penalty(λ)`) to the objective.
+- the loss function to be minimized, to be chosen among least squares (`OLS()`), L1SVR (`L1SVR(ɛ)`), L2SVR (`L2SVR(ɛ)`), Logistic loss (`LogReg()`), Hinge Loss (`L1SVM()`), L2-SVM (`L2SVM()`). For classification, we recommend using Hinge loss or L2-SVM functions. Indeed, the Fenchel conjugate of the Logistic loss exhibits unbounded gradients, which largely hinders convergence of the algorithm and might require smaller and more steps (see optional parameters).
+- the model used to enforce sparsity; either by adding a hard constraint of the form "||w||_0 < k" (`Constraint(k)`) or by adding a penalty of the form "+ λ ||w||_0" (`Penalty(λ)`) to the objective. For tractability issues, we highly recommend using an explicit constraint instead of a penalty, for it ensures the size of the support remains bounded through the algorithm.
 - the vector of outputs `Y` of size `n`, the sample size. In classification settings, `Y` should be a vector of ±1s.
 - the matrix of covariates `X` of size `n`×`p`, where `n` and `p` are the number of samples and features respectively.
 
@@ -78,11 +78,11 @@ In addition, `subsetSelection` accepts the following optional parameters:
 - an initialization for the selected features, `indInit`.
 - an initialization for the dual variables, `αInit`.
 - the value of the ℓ2-regularization parameter `γ`, set to 1/√n by default.
-- `intercept`, a boolean. If true, an intercept/bias term is computed as well.
+- `intercept`, a boolean. If true, an intercept/bias term is computed as well. By default, set to false.
 - the maximum number of iterations in the sub-gradient algorithm, `maxIter`.
-- the value of the gradient stepsize `δ`.
+- the value of the gradient stepsize `δ`. By default, the stepsize is set to 1e-3, which demonstrates very good empirical performance. However, smaller stepsizes might be needed when dealing with very large datasets or when the Logistic loss is used. 
 - the number of gradient updates of dual variable α performed per update of primal variable s, `gradUp`.
-- `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. By default, set to false.
+- `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. Empirically, the accuracy of the resulting support is strongly sensitive to noise - to use with caution. By default, set to false. 
  - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
 ## Reference
