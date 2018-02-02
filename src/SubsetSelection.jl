@@ -9,7 +9,6 @@ export SparseEstimator, subsetSelection
 
 include("types.jl")
 
-
 # Type to hold preallocated memory
 immutable Cache
   g::Vector{Float64}
@@ -73,12 +72,10 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   ##Dual Sub-gradient Algorithm
   @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
 
-      δ = stepsize(iter, floor(Int, 2*maxIter/3))
-
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
       ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-      α .+= δ*∇ / norm(∇)
+      α .+= δ*∇
       α = proj_dual(ℓ, Y, α)
       α = proj_intercept(intercept, α)
     end
@@ -157,10 +154,6 @@ function alpha_init(ℓ::L2SVR, Y)
 end
 function alpha_init(ℓ::Classification, Y)
   return -Y./2
-end
-
-function stepsize(epoch, m)
-  return (1+m)/(epoch+m)
 end
 
 ##Dual objective function value for a given dual variable α
