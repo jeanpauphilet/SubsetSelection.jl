@@ -1,5 +1,5 @@
 module SubsetSelection
-using Compat
+using Compat, ProgressMeter
 
 import Compat.String
 
@@ -129,7 +129,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
   ##Dual Sub-gradient Algorithm
   iter = 2
-  while iter < maxIter
+  @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
     # println("Iterations: ", iter)
 
     #Gradient ascent on α
@@ -152,8 +152,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     if anticycling && indices_same(indices, indices_old, n_indices)
       averaging = false #If the algorithm stops because of cycling, averaging is not needed
       break
-    else
-      iter += 1
+    # else
+    #   iter += 1
     end
   end
 
