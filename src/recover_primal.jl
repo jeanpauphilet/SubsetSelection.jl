@@ -7,7 +7,7 @@ INPUT
   γ           - Regularization parameter
 OUTPUT
   w           - Optimal regressor"""
-function recover_primal(ℓ::OLS, Y, Z, γ)
+function recover_primal(ℓ::Regression, Y, Z, γ)
   CM = eye(size(Z,2))/γ + Z'*Z      # The capacitance matrix
   α = -Y + Z*(CM\(Z'*Y))            # Matrix Inversion Lemma
   return -γ*Z'*α                    # Regressor
@@ -15,13 +15,14 @@ end
 
 using LIBLINEAR
 
-function recover_primal(ℓ::LossFunction, Y, Z, γ)
+function recover_primal(ℓ::Classification, Y, Z, γ)
   solverNumber = LibLinearSolver(ℓ)
-  model = linear_train(Y, Z'; verbose=false, C=γ, solver_type=Cint(solverNumber))
   if isa(ℓ, SubsetSelection.Classification)
+    model = linear_train(Y, Z'; verbose=false, C=γ, solver_type=Cint(solverNumber))
     return Y[1]*model.w
-  else
-    return model.w
+  # else
+  #   model = linear_train(Y, Z'; verbose=false, C=γ, solver_type=Cint(solverNumber), eps = ℓ.ε)
+  #   return model.w
   end
 end
 
