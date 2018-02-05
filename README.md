@@ -85,8 +85,11 @@ In addition, `subsetSelection` accepts the following optional parameters:
 - `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. Empirically, the accuracy of the resulting support is strongly sensitive to noise - to use with caution. By default, set to false. 
  - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
-## Best practice (To be done)
+## Best practices (To be done)
 - Computing w 
-- Tuning `γ`
+- Tuning the regularization parameter `γ`: By default, `γ` is set to 1/√n, which is an appropriate scaling in most regression instances. For an optimal performance, and especially in classification or noisy settings, we recommend perfoming a grid search and using cross-validation to assess out-of-sample performance. The grid search should start with a very low value for `γ`, such as  
+```julia 
+    γ = 1.*p / k / n / maximum(sum(X[train,:].^2,2))
+``` and multiply it by 2 at each iteration. 
 - NaN values
 ## Reference
