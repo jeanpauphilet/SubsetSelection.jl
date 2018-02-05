@@ -85,4 +85,8 @@ In addition, `subsetSelection` accepts the following optional parameters:
 - `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. Empirically, the accuracy of the resulting support is strongly sensitive to noise - to use with caution. By default, set to false. 
  - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
+## Best practice (To be done)
+- Computing w 
+- Tuning `γ`
+- NaN values
 ## Reference
