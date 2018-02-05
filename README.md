@@ -39,7 +39,8 @@ julia> Sparse_Regressor.indices
  5221
  7314
  7748
- 9267```
+ 9267
+ ```
  
  or compute predictions
 ```julia
