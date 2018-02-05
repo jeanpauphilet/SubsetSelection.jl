@@ -91,6 +91,6 @@ In addition, `subsetSelection` accepts the following optional parameters:
 ```julia 
     γ = 1.*p / k / n / maximum(sum(X[train,:].^2,2))
 ``` 
-and multiply it by 2 at each iteration. Mean square error or Area Under the Curve (see [ROCAnalysis]( https://github.com/davidavdav/ROCAnalysis.jl) for implementation) are commonly used performance metrics for regression and classification tasks respectively.
+and iteratively increase it by a factor 2. Mean square error or Area Under the Curve (see [ROCAnalysis]( https://github.com/davidavdav/ROCAnalysis.jl) for implementation) are commonly used performance metrics for regression and classification tasks respectively.
 - NaN values
 ## Reference
