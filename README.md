@@ -26,6 +26,7 @@ SubsetSelection.SparseEstimator(SubsetSelection.OLS(),SubsetSelection.Constraint
 
 The algorithm returns a SparseEstimator object with the following fields: `loss` (loss function used), `sparsity` (model to enforce sparsity), `indices` (features selected), `w` (value of the estimator on the selected features only), `α` (values of the associated dual variables), `b` (bias term), `iter` (number of iterations required by the algorithm).
 
+For instance, you can access the selected features directly in the `indices` field:
 ```julia
 julia> Sparse_Regressor.indices
 10-element Array{Int64,1}:
@@ -38,7 +39,10 @@ julia> Sparse_Regressor.indices
  5221
  7314
  7748
- 9267
+ 9267```
+ 
+ or compute predictions
+```julia
 julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
 100-element Array{Float64,1}:
    4.62918
@@ -64,7 +68,8 @@ julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
   -6.06553
  ```
 
-For classification, use +1/-1 labels.
+For classification, we use +1/-1 labels and the convention 
+$$\mathbb{P}\left( Y = y | X = x \right) = \dfrac{1}{1+e^{y x^T w}}. $$
 
 ## Required and optional parameters
 
