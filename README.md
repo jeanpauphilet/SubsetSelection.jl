@@ -87,10 +87,10 @@ In addition, `subsetSelection` accepts the following optional parameters:
 
 ## Best practices (To be done)
 - Computing w 
-- Tuning the regularization parameter `γ`: By default, `γ` is set to 1/√n, which is an appropriate scaling in most regression instances. For an optimal performance, and especially in classification or noisy settings, we recommend perfoming a grid search and using cross-validation to assess out-of-sample performance. The grid search should start with a very low value for `γ`, such as  
+- Tuning the regularization parameter `γ`: By default, `γ` is set to 1/√n, which is an appropriate scaling in most regression instances. For an optimal performance, and especially in classification or noisy settings, we recommend performing a grid search and using cross-validation to assess out-of-sample performance. The grid search should start with a very low value for `γ`, such as  
 ```julia 
     γ = 1.*p / k / n / maximum(sum(X[train,:].^2,2))
 ``` 
-and multiply it by 2 at each iteration. 
+and multiply it by 2 at each iteration. Mean square error or Area Under the Curve (see [r2h]( https://github.com/davidavdav/ROCAnalysis.jl)(ROCAnalysis) for implementation) are commonly used performance metrics for regression and classification tasks respectively.
 - NaN values
 ## Reference
