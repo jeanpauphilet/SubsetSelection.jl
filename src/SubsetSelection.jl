@@ -8,6 +8,7 @@ export Sparsity, Constraint, Penalty
 export SparseEstimator, subsetSelection
 
 include("types.jl")
+include("recover_primal.jl")
 
 # Type to hold preallocated memory
 immutable Cache
@@ -112,7 +113,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   #Subset of relevant features
   n_indices = partial_min!(indices, Card, X, averaging ? a : α, γ, cache)
   #Regressor
-  w = [-γ * dot(X[:, indices[j]], a) for j in 1:n_indices]
+  # w = [-γ * dot(X[:, indices[j]], a) for j in 1:n_indices]
+  w = recover_primal(ℓ, Y, X[:,indices], γ)
   #Bias
   b = compute_bias(ℓ, Y, X, a, indices, n_indices, γ, intercept, cache)
 
