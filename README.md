@@ -86,11 +86,10 @@ In addition, `subsetSelection` accepts the following optional parameters:
  - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
 ## Best practices (To be done)
-- Computing w 
 - Tuning the regularization parameter `γ`: By default, `γ` is set to 1/√n, which is an appropriate scaling in most regression instances. For an optimal performance, and especially in classification or noisy settings, we recommend performing a grid search and using cross-validation to assess out-of-sample performance. The grid search should start with a very low value for `γ`, such as  
 ```julia 
     γ = 1.*p / k / n / maximum(sum(X[train,:].^2,2))
 ``` 
 and iteratively increase it by a factor 2. Mean square error or Area Under the Curve (see [ROCAnalysis]( https://github.com/davidavdav/ROCAnalysis.jl) for implementation) are commonly used performance metrics for regression and classification tasks respectively.
-- NaN values
+- Instances where the algorithm fails to converge have been reported. If you occur such cases, try normalize the data matrix `X` and relaunch the algorithm. If the algorithm still fails to converge, reduce the stepsize `δ` by a factor 10 or 100 and increase the number of iterations `maxIter` by a factor at least 2. 
 ## Reference
