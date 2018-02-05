@@ -94,6 +94,9 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
       α = proj_intercept(intercept, α)
     end
 
+    if any(isnan.(α))
+        warn("Algorithm diverges! Did you normalize your data? Otherwise, try reducing stepsize δ.")
+    end
     #Update average a
     @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
     # a *= (iter - 1)/iter; a .+= α/iter
