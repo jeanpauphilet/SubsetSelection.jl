@@ -70,7 +70,7 @@ julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
  ```
 
 For classification, we use +1/-1 labels and the convention 
-`P ( Y = y | X = x ) = 1 / (1+e^{y x^T w})`.
+`P ( Y = y | X = x ) = 1 / (1+e^{- y x^T w})`.
 
 ## Required and optional parameters
 
