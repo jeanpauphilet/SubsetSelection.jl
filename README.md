@@ -12,7 +12,7 @@ julia> Pkg.install("SubsetSelection")
 ```
 or the have the latest version
 ```julia
-julia> Pkg.clone("git://github.com/jeanpauphilet/SubsetSelectionCIO.jl.git")
+julia> Pkg.clone("git://github.com/jeanpauphilet/SubsetSelection.jl.git")
 ```
 
 To fit a basic model:
