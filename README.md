@@ -10,6 +10,10 @@ To install the package:
 ```julia
 julia> Pkg.install("SubsetSelection")
 ```
+or the have the latest version
+```julia
+julia> Pkg.clone("git://github.com/jeanpauphilet/SubsetSelectionCIO.jl.git")
+```
 
 To fit a basic model:
 
