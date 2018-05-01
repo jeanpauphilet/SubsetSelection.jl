@@ -59,6 +59,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   n,p = size(X)
   cache = Cache(n, p)
 
+  δ_reduced = 0
+
   #Add sanity checks
   if size(Y,1) != n
     throw(DimensionMismatch("X and Y must have the same number of rows"))
@@ -72,6 +74,11 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     end
   end
 
+  function initialize_params!(indices::Vector{Int}, α::Vector{Float64}, a::Vector{Float64})
+    α .= αInit
+    a .= αInit
+    indices .= indInit
+  end
 
   indices = indInit #Support
   n_indices = length(indices)
@@ -84,7 +91,10 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   a = αInit[:]  #Past average of α
 
   ##Dual Sub-gradient Algorithm
-  @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
+  iter = 1
+  # @showprogress 2 "Feature selection in progress... "
+  while iter < maxIter
+    iter += 1
 
     #Gradient ascent on α
     for inner_iter in 1:min(gradUp, div(p, n_indices))
@@ -94,8 +104,21 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
       α = proj_intercept(intercept, α)
     end
 
-    if any(isnan.(α))
-        warn("Algorithm diverges! Did you normalize your data? Otherwise, try reducing stepsize δ.")
+    if any(.!isfinite.(α))
+        if δ_reduced > 10
+            error("Stepsize δ reduced too many times. Please check your data
+                         is appropriately normalized.")
+        end
+        δ /= 10
+        δ_reduced += 1
+        warn("Algorithm diverges! Did you normalize your data? I am now reducing
+                       stepsize δ to $(δ) and restarting.")
+        indices = similar(indInit)
+        initialize_params!(indices, α, a)
+        n_indices = length(indices)
+        resize!(indices, n_indices_max)
+        iter = 1
+        continue
     end
     #Update average a
     @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
