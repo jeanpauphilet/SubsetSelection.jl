@@ -25,6 +25,12 @@ immutable Cache
   end
 end
 
+immutable bestSupport
+  indices::Vector{Int}
+  nindices::Vector{Int}
+  w::Vector{Float64}
+  value::Vector{Float64}
+end
 ##############################################
 ##DUAL SUB-GRADIENT ALGORITHM
 ##############################################
@@ -83,16 +89,29 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
+  w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+  resize!(w, n_indices_max)
+  best_s = bestSupport(indices[:], [n_indices], w, [value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ)] )
+
+  value = value_dual(ℓ, Y, X, α, indices, n_indices, γ)
+
+  consecutive_noimprov = 0
+  η = 1
   ##Dual Sub-gradient Algorithm
   @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
-
     #Gradient ascent on α
-    for inner_iter in 1:min(gradUp, div(p, n_indices))
-      ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-      α .+= δ*∇
-      α = proj_dual(ℓ, Y, α)
-      α = proj_intercept(intercept, α)
+    value = value_dual(ℓ, Y, X, α, indices, n_indices, γ)
+    ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
+    δ =  η*(best_s.value[1] - value) / dot(∇,∇) #Poliak's rule
+    α .+= δ*∇
+    α = proj_dual(ℓ, Y, α)
+    α = proj_intercept(intercept, α)
+
+    if iter % 50 == 0
+      η /= 2
     end
+
+    # println("dGap:", (best_s.value[1] - value))
 
     if any(isnan.(α))
         warn("Algorithm diverges! Did you normalize your data? Otherwise, try reducing stepsize δ.")
@@ -105,6 +124,20 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indices_old[1:n_indices] = indices[1:n_indices]
     n_indices = partial_min!(indices, Card, X, α, γ, cache)
 
+    #
+    w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+    upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
+
+    if upper_bound < best_s.value[1]
+        consecutive_noimprov = 0
+        best_s.indices[:] = indices[:]
+        best_s.nindices[1] = n_indices
+        best_s.w[1:n_indices] = w[:]
+        best_s.value[1] = upper_bound
+    else
+        consecutive_noimprov += 1
+    end
+
     #Anticycling rule: Stop if indices_old == indices
     if anticycling && indices_same(indices, indices_old, n_indices)
       averaging = false #If the algorithm stops because of cycling, averaging is not needed
@@ -116,8 +149,15 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   #Subset of relevant features
   n_indices = partial_min!(indices, Card, X, averaging ? a : α, γ, cache)
   #Regressor
-  # w = [-γ * dot(X[:, indices[j]], a) for j in 1:n_indices]
-  w = recover_primal(ℓ, Y, X[:,indices], γ)
+  w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+
+  upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], best_w, γ)
+  if upper_bound > best_s.value[1] #If last solution worse than the best found
+      n_indices = best_s.nindices[1]
+      indices[:] = best_s.indices[:]
+      w = best_s.w[1:n_indices]
+  end
+
   #Bias
   b = compute_bias(ℓ, Y, X, a, indices, n_indices, γ, intercept, cache)
 
@@ -175,7 +215,7 @@ function alpha_init(ℓ::Classification, Y)
 end
 
 ##Dual objective function value for a given dual variable α
-function dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ)
+function value_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ)
   v = - sum([fenchel(ℓ, Y[i], α[i]) for i in 1:size(X, 1)])
   for j in 1:n_indices
     v -= γ/2*(dot(X[:, indices[j]], α)^2)
@@ -273,6 +313,13 @@ function compute_bias(ℓ::LossFunction, Y, X, α, indices, n_indices, γ,
   else
     return 0.
   end
+end
+
+##Primal objective function value for a given primal variable w
+function value_primal(ℓ::LossFunction, Y, X, w, γ)
+  v = sum([loss(ℓ, Y[i], dot(X[i,:], w)) for i in 1:size(X, 1)])
+  v += dot(w,w)/2/γ
+  return v
 end
 
 end #module
