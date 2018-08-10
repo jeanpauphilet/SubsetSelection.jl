@@ -111,11 +111,9 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
       η /= 2
     end
 
-    # println("dGap:", (best_s.value[1] - value))
-
-    if any(isnan.(α))
-        warn("Algorithm diverges! Did you normalize your data? Otherwise, try reducing stepsize δ.")
-    end
+    # if any(isnan.(α))
+    #     warn("Algorithm diverges! Did you normalize your data? Otherwise, try reducing stepsize δ.")
+    # end
     #Update average a
     @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
     # a *= (iter - 1)/iter; a .+= α/iter
@@ -151,7 +149,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   #Regressor
   w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
 
-  upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], best_w, γ)
+  upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
   if upper_bound > best_s.value[1] #If last solution worse than the best found
       n_indices = best_s.nindices[1]
       indices[:] = best_s.indices[:]
