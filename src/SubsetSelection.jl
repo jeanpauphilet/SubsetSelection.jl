@@ -25,11 +25,12 @@ immutable Cache
   end
 end
 
-immutable bestSupport
+mutable struct bestSupport
   indices::Vector{Int}
-  nindices::Vector{Int}
+  nindices::Int
   w::Vector{Float64}
-  value::Vector{Float64}
+  ub::Float64
+  lb::Float64
 end
 ##############################################
 ##DUAL SUB-GRADIENT ALGORITHM
@@ -59,8 +60,8 @@ OUTPUT
 function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
-    maxIter = 100, δ = 1e-3, gradUp = 10,
-    anticycling = false, averaging = true)
+    maxIter = 200, noImprov_threshold = 20, dGap = 1e-4,
+    η = 1)
 
   n,p = size(X)
   cache = Cache(n, p)
@@ -85,73 +86,73 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   n_indices_max = max_index_size(Card, p)
   resize!(indices, n_indices_max)
 
-  indices_old = Vector{Int}(n_indices_max)
+  # indices_old = Vector{Int}(n_indices_max)
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
   w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
   resize!(w, n_indices_max)
-  best_s = bestSupport(indices[:], [n_indices], w, [value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ)] )
 
-  value = value_dual(ℓ, Y, X, α, indices, n_indices, γ)
-
+  best_s = bestSupport(indices[:], n_indices, w, value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ), -Inf)
   consecutive_noimprov = 0
-  η = 1
+
   ##Dual Sub-gradient Algorithm
   @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
+
+    #Minimization w.r.t. s
+    n_indices = partial_min!(indices, Card, X, α, γ, cache)
+
+    w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+    upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
+
+    if upper_bound < best_s.ub
+        consecutive_noimprov = 0
+        best_s.indices[:] = indices[:]
+        best_s.nindices = n_indices
+        best_s.w[1:n_indices] = w[:]
+        best_s.ub = upper_bound
+    else
+        consecutive_noimprov += 1
+    end
+
+    best_s.lb = max(best_s.lb, value_dual(ℓ, Y, X, α, indices, n_indices, γ))
+
     #Gradient ascent on α
-    value = value_dual(ℓ, Y, X, α, indices, n_indices, γ)
     ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-    δ =  η*(best_s.value[1] - value) / dot(∇,∇) #Poliak's rule
+    δ =  η*(best_s.ub - best_s.lb) / dot(∇,∇) #Poliak's rule
     α .+= δ*∇
     α = proj_dual(ℓ, Y, α)
     α = proj_intercept(intercept, α)
+
 
     if iter % 50 == 0
       η /= 2
     end
 
-    # if any(isnan.(α))
-    #     warn("Algorithm diverges! Did you normalize your data? Otherwise, try reducing stepsize δ.")
-    # end
     #Update average a
     @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
-    # a *= (iter - 1)/iter; a .+= α/iter
 
-    #Minimization w.r.t. s
-    indices_old[1:n_indices] = indices[1:n_indices]
-    n_indices = partial_min!(indices, Card, X, α, γ, cache)
-
-    #
-    w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
-    upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
-
-    if upper_bound < best_s.value[1]
-        consecutive_noimprov = 0
-        best_s.indices[:] = indices[:]
-        best_s.nindices[1] = n_indices
-        best_s.w[1:n_indices] = w[:]
-        best_s.value[1] = upper_bound
-    else
-        consecutive_noimprov += 1
+    #Duality gap rule
+    if (best_s.ub - best_s.lb) / abs(best_s.lb) < dGap
+      maxIter = iter
+      break
     end
-
-    #Anticycling rule: Stop if indices_old == indices
-    if anticycling && indices_same(indices, indices_old, n_indices)
-      averaging = false #If the algorithm stops because of cycling, averaging is not needed
+    #Duality gap rule
+    if consecutive_noimprov >= noImprov_threshold
+      maxIter = iter
       break
     end
   end
 
   ##Compute sparse estimator
   #Subset of relevant features
-  n_indices = partial_min!(indices, Card, X, averaging ? a : α, γ, cache)
+  n_indices = partial_min!(indices, Card, X, a, γ, cache)
   #Regressor
   w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
 
-  upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
-  if upper_bound > best_s.value[1] #If last solution worse than the best found
-      n_indices = best_s.nindices[1]
+  value = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
+  if value > best_s.ub #If last solution worse than the best found
+      n_indices = best_s.nindices
       indices[:] = best_s.indices[:]
       w = best_s.w[1:n_indices]
   end
