@@ -60,7 +60,7 @@ OUTPUT
 function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
-    maxIter = 200, noImprov_threshold = 20, dGap = 1e-4,
+    maxIter = 200, noImprov_threshold = maxIter, dGap = 1e-4,
     η = 1)
 
   n,p = size(X)
@@ -102,7 +102,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     #Minimization w.r.t. s
     n_indices = partial_min!(indices, Card, X, α, γ, cache)
 
-    w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+    w[:] = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
     upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
 
     if upper_bound < best_s.ub
