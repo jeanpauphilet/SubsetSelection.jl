@@ -1,5 +1,5 @@
 module SubsetSelection
-using Compat, ProgressMeter
+using Compat#, ProgressMeter
 
 import Compat.String
 
@@ -97,7 +97,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   consecutive_noimprov = 0
 
   ##Dual Sub-gradient Algorithm
-  @showprogress 2 "Feature selection in progress... " for iter in 2:maxIter
+  # @showprogress 2 "Feature selection in progress... " 
+  for iter in 2:maxIter
 
     #Minimization w.r.t. s
     n_indices = partial_min!(indices, Card, X, α, γ, cache)
