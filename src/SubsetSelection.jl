@@ -93,18 +93,18 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
   resize!(w, n_indices_max)
 
-  best_s = bestSupport(indices[:], n_indices, w, value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ), -Inf)
+  best_s = bestSupport(indices[:], n_indices, w, value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ, cache), -Inf)
   consecutive_noimprov = 0
 
   ##Dual Sub-gradient Algorithm
-  # @showprogress 2 "Feature selection in progress... " 
+  # @showprogress 2 "Feature selection in progress... "
   for iter in 2:maxIter
 
     #Minimization w.r.t. s
     n_indices = partial_min!(indices, Card, X, α, γ, cache)
 
     w[:] = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
-    upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
+    upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ, cache)
 
     if upper_bound < best_s.ub
         consecutive_noimprov = 0
@@ -117,14 +117,34 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     end
 
     best_s.lb = max(best_s.lb, value_dual(ℓ, Y, X, α, indices, n_indices, γ))
-
+    println(best_s.lb)
     #Gradient ascent on α
     ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
+
+    #Stop if small gradient
+    if norm(∇, 1) <= 1e-14
+      maxIter = iter
+      break
+    end
+
+    #For numeric stability
+    if norm(∇, 1) == Inf
+      pInfIndex = find(∇ .== Inf)
+      nInfIndex = find(∇ .== -Inf)
+
+      α[pInfIndex] = -Y[pInfIndex]*1e-14
+      α[nInfIndex] = -Y[nInfIndex]*(1-1e-14)
+
+      ∇[pInfIndex] = 0.
+      ∇[nInfIndex] = 0.
+    end
+
     δ =  η*(best_s.ub - best_s.lb) / dot(∇,∇) #Poliak's rule
     α .+= δ*∇
-    α = proj_dual(ℓ, Y, α)
-    α = proj_intercept(intercept, α)
-
+    # α = proj_dual(ℓ, Y, α)
+    # α = proj_intercept(intercept, α)
+    proj_dual!(ℓ, Y, α)
+    proj_intercept!(intercept, α)
 
     if iter % 50 == 0
       η /= 2
@@ -151,7 +171,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   #Regressor
   w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
 
-  value = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ)
+  value = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ, cache)
   if value > best_s.ub #If last solution worse than the best found
       n_indices = best_s.nindices
       indices[:] = best_s.indices[:]
@@ -238,31 +258,35 @@ function grad_dual(ℓ::LossFunction, Y, X, α, indices, n_indices, γ, cache::C
 end
 
 ##Projection of α on the feasible set of the Fenchel conjugate
-function proj_dual(ℓ::OLS, Y, α)
-  return α
+function proj_dual!(ℓ::OLS, Y, α)
+  # return α
 end
-function proj_dual(ℓ::L1SVR, Y, α)
-  return max.(-1,min.(1, α))
+function proj_dual!(ℓ::L1SVR, Y, α)
+  α[:] = max.(-1,min.(1, α))
+  # return max.(-1,min.(1, α))
 end
-function proj_dual(ℓ::L2SVR, Y, α)
-  return α
+function proj_dual!(ℓ::L2SVR, Y, α)
+  # return α
 end
-function proj_dual(ℓ::LogReg, Y, α)
-  return Y.*max.(-1,min.(0, Y.*α))
+function proj_dual!(ℓ::LogReg, Y, α)
+  α[:] = Y.*max.(-1,min.(0, Y.*α))
+  # return Y.*max.(-1,min.(0, Y.*α))
 end
-function proj_dual(ℓ::L1SVM, Y, α)
-  return Y.*max.(-1,min.(0, Y.*α))
+function proj_dual!(ℓ::L1SVM, Y, α)
+  α[:] = Y.*max.(-1,min.(0, Y.*α))
+  # return Y.*max.(-1,min.(0, Y.*α))
 end
-function proj_dual(ℓ::L2SVM, Y, α)
-  return Y.*min.(0, Y.*α)
+function proj_dual!(ℓ::L2SVM, Y, α)
+  α[:] = Y.*min.(0, Y.*α)
+  # return Y.*min.(0, Y.*α)
 end
 
 ##Projection of α on e^T α = 0 (if intercept)
-function proj_intercept(intercept::Bool, α)
+function proj_intercept!(intercept::Bool, α)
   if intercept
-    α .-= mean(α)
+    α[:] .-= mean(α)
   end
-  return α
+  # return α
 end
 
 ##Minimization w.r.t. s
@@ -316,10 +340,16 @@ function compute_bias(ℓ::LossFunction, Y, X, α, indices, n_indices, γ,
 end
 
 ##Primal objective function value for a given primal variable w
-function value_primal(ℓ::LossFunction, Y, X, w, γ)
-  v = sum([loss(ℓ, Y[i], dot(X[i,:], w)) for i in 1:size(X, 1)])
-  v += dot(w,w)/2/γ
-  return v
+function value_primal(ℓ::LossFunction, Y, X, w, γ, cache::Cache)
+  # g = cache.g
+  # # for i in 1:size(X, 1)
+  # #   g[i] = loss(ℓ, Y[i], dot(X[i,:], w))
+  # # end
+  # g[:] = loss(ℓ, Y, X*w)
+  return sum(loss(ℓ, Y, X*w)) + dot(w,w)/2/γ
+  # v = sum([loss(ℓ, Y[i], dot(X[i,:], w)) for i in 1:size(X, 1)])
+  # v += dot(w,w)/2/γ
+  # return v
 end
 
 end #module

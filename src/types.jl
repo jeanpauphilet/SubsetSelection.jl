@@ -22,22 +22,22 @@
 
   ##Point-wise value of the Fenchel conjugate for each loss function
   function loss(ℓ::OLS, y, u)
-    return .5*(y-u)^2
+    return .5*(y.-u).^2
   end
   function loss(ℓ::L1SVR, y, u)
-    return max.(abs.(y-u) - ℓ.ɛ, 0.)
+    return max.(abs.(y-u) .- ℓ.ɛ, 0.)
   end
   function loss(ℓ::L2SVR, y, u)
-    return .5*max.(abs.(y-u) - ℓ.ɛ, 0.)^2
+    return .5*max.(abs.(y-u) .- ℓ.ɛ, 0.)^2
   end
   function loss(ℓ::LogReg, y, u)
-    return log(1+ exp.(-y*u))
+    return log.(1 .+ exp.(-y.*u))
   end
   function loss(ℓ::L1SVM, y, u)
-    return max.(0., 1 - y*u)
+    return max.(0., 1 .- y.*u)
   end
   function loss(ℓ::L2SVM, y, u)
-    return .5*max.(0., 1 - y*u)^2
+    return .5*max.(0., 1 .- y.*u).^2
   end
 
   ##Point-wise value of the Fenchel conjugate for each loss function

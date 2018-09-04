@@ -18,7 +18,7 @@ using LIBLINEAR
 function recover_primal(ℓ::Classification, Y, Z, γ)
   solverNumber = LibLinearSolver(ℓ)
   if isa(ℓ, SubsetSelection.Classification)
-    model = linear_train(Y, Z'; verbose=false, C=γ, solver_type=Cint(solverNumber))
+    model = LIBLINEAR.linear_train(Y, Z'; verbose=false, C=γ, solver_type=Cint(solverNumber))
     return Y[1]*model.w
   # else
   #   model = linear_train(Y, Z'; verbose=false, C=γ, solver_type=Cint(solverNumber), eps = ℓ.ε)
