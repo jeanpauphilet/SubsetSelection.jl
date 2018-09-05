@@ -117,7 +117,6 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     end
 
     best_s.lb = max(best_s.lb, value_dual(ℓ, Y, X, α, indices, n_indices, γ))
-    println(best_s.lb)
     #Gradient ascent on α
     ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
 
