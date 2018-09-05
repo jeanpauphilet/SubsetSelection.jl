@@ -258,26 +258,20 @@ end
 
 ##Projection of α on the feasible set of the Fenchel conjugate
 function proj_dual!(ℓ::OLS, Y, α)
-  # return α
 end
 function proj_dual!(ℓ::L1SVR, Y, α)
   α[:] = max.(-1,min.(1, α))
-  # return max.(-1,min.(1, α))
 end
 function proj_dual!(ℓ::L2SVR, Y, α)
-  # return α
 end
 function proj_dual!(ℓ::LogReg, Y, α)
   α[:] = Y.*max.(-1,min.(0, Y.*α))
-  # return Y.*max.(-1,min.(0, Y.*α))
 end
 function proj_dual!(ℓ::L1SVM, Y, α)
   α[:] = Y.*max.(-1,min.(0, Y.*α))
-  # return Y.*max.(-1,min.(0, Y.*α))
 end
 function proj_dual!(ℓ::L2SVM, Y, α)
   α[:] = Y.*min.(0, Y.*α)
-  # return Y.*min.(0, Y.*α)
 end
 
 ##Projection of α on e^T α = 0 (if intercept)
