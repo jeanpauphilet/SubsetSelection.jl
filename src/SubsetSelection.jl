@@ -8,6 +8,7 @@ export Sparsity, Constraint, Penalty
 export SparseEstimator, subsetSelection
 
 include("types.jl")
+include("stepsize.jl")
 include("recover_primal.jl")
 
 # Type to hold preallocated memory
@@ -29,7 +30,8 @@ mutable struct bestSupport
   indices::Vector{Int}
   nindices::Int
   w::Vector{Float64}
-  ub::Float64
+  ub::Float64 #UB corresponds to the upper bound on the objective value of the relaxation. obj ≧ UB, but sometimes obj > UB when relaxation not tight
+  obj::Float64
   lb::Float64
 end
 ##############################################
@@ -49,19 +51,22 @@ INPUTS
 - αInit       (optional) Initial dual variable α
 - γ           (optional) ℓ2 regularization penalty
 - intercept   (optional) Boolean. If true, an intercept term is computed as well
-- maxIter     (optional) Total number of Iterations
-- δ           (optional) Gradient stepsize
-- gradUp      (optional) Number of gradient updates of dual variable α performed per update of primal variable s
-- anticycling (optional) Boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another
-- averaging   (optional) Boolean. If true, the dual solution is averaged over past iterates
+
+- stepRule    (optional) Stepsize rule to be used in the subgradient algorithm. Default Poliak's
+- maxIter     (optional) Total number of iterations. Default 200
+- numberRestarts     (optional) Number of restarting. Default 4
+Stopping criterion
+- noImprov_threshold      (optional) Algorithm stops after noImprov_threshold iterations without improvement
+- dGap (optional) Algorithm stops if the duality + integrality gap drops below dGap
 
 OUTPUT
 - SparseEstimator """
 function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
-    maxIter = 200, noImprov_threshold = maxIter, dGap = 1e-4,
-    η = 1)
+    stepRule::StepSizeRule = poliakRule(1),
+    maxIter = 200, numberRestarts = 4,
+    noImprov_threshold = maxIter, dGap = 1e-4)
 
   n,p = size(X)
   cache = Cache(n, p)
@@ -79,102 +84,127 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     end
   end
 
+  #Initialize variables
+  indices = indInit #Current support
+  n_indices = length(indices) #Number of non-zero elements
 
-  indices = indInit #Support
-  n_indices = length(indices)
+  n_indices_max = max_index_size(Card, p) #Max size of the support
+  resize!(indices, n_indices_max+1)
 
-  n_indices_max = max_index_size(Card, p)
-  resize!(indices, n_indices_max)
-
-  # indices_old = Vector{Int}(n_indices_max)
   α = αInit[:]  #Dual variable α
   a = αInit[:]  #Past average of α
 
-  w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
-  resize!(w, n_indices_max)
+  w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)  #Current regressor / primal variable
+  resize!(w, n_indices_max+1)
 
-  best_s = bestSupport(indices[:], n_indices, w, value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ, cache), -Inf)
+  obj_init = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ, cache) #Current primal objective
+
+  #Initialize memory
+  subsetPool = Set() #Memory: set of visited supports
+  push!(subsetPool, indices[1:n_indices])
+  best_s = bestSupport(indices[:], n_indices, w[:], obj_init, obj_init, -Inf) #Memory: best solution so far
   consecutive_noimprov = 0
 
   ##Dual Sub-gradient Algorithm
   # @showprogress 2 "Feature selection in progress... "
-  for iter in 2:maxIter
+  effectiveEpoch = 0
+  for restart in 1:numberRestarts
+    α[:] = a[:] #Set initial point to the average
+    effectiveEpoch += 1
 
-    #Minimization w.r.t. s
-    n_indices = partial_min!(indices, Card, X, α, γ, cache)
+    for iter in 2:round(Int, maxIter/numberRestarts)
+      effectiveEpoch += 1
+      #Minimization w.r.t. s
+      n_indices, tie = partial_min!(indices, Card, X, α, γ, cache)
 
-    w[:] = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
-    upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ, cache)
+      if tie
+        #If one tie in the k best features, UB for the relaxation is obtained by including all (k+1) features
+        #Warning: in this case, we generate an infeasible solution
+        #TO DO: take into account multiple ties
+        w[1:(n_indices+1)] = recover_primal(ℓ, Y, X[:,indices[1:(n_indices+1)]], γ)
+        upper_bound = value_primal(ℓ, Y, X[:,indices[1:(n_indices+1)]], w[1:(n_indices+1)], γ, cache)
+        best_s.ub = min(best_s.ub, upper_bound)
+      else
+        if indices[1:n_indices] ∉ subsetPool #if support has never been seen
+          push!(subsetPool, indices[1:n_indices])
 
-    if upper_bound < best_s.ub
-        consecutive_noimprov = 0
-        best_s.indices[:] = indices[:]
-        best_s.nindices = n_indices
-        best_s.w[1:n_indices] = w[:]
-        best_s.ub = upper_bound
-    else
-        consecutive_noimprov += 1
+          w[1:n_indices] = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+          upper_bound = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ, cache)
+
+          if upper_bound < best_s.obj
+              consecutive_noimprov = 0
+
+              best_s.indices[1:n_indices] = indices[1:n_indices]
+              best_s.nindices = n_indices
+              best_s.w[1:n_indices] = w[1:n_indices]
+
+              best_s.obj = upper_bound
+              best_s.ub = min(best_s.ub, upper_bound)
+          else
+              consecutive_noimprov += 1
+          end
+        else
+          consecutive_noimprov += 1
+        end
+      end
+
+      best_s.lb = max(best_s.lb, value_dual(ℓ, Y, X, α, indices, n_indices, γ))
+
+      #Gradient ascent on α
+      ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
+
+      #Stop if small gradient
+      if norm(∇, 1) <= 1e-14
+        maxIter = iter
+        break
+      end
+
+      #For numeric stability
+      if isa(ℓ, SubsetSelection.Classification) && norm(∇, 1) == Inf
+        pInfIndex = find(∇ .== Inf)
+        nInfIndex = find(∇ .== -Inf)
+
+        α[pInfIndex] = -Y[pInfIndex]*1e-14
+        α[nInfIndex] = -Y[nInfIndex]*(1-1e-14)
+
+        ∇[pInfIndex] = 0.
+        ∇[nInfIndex] = 0.
+      end
+
+      δ =  computeStepSize(stepRule, iter, ∇, best_s.ub, best_s.lb)
+      α .+= δ*∇
+
+      proj_dual!(ℓ, Y, α)
+      proj_intercept!(intercept, α)
+
+      #Update average a
+      @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
+
+      #Duality gap rule
+      if (best_s.ub - best_s.lb) / abs(best_s.lb) < dGap
+        break
+      end
+
+      #No improvement rule
+      if consecutive_noimprov >= noImprov_threshold
+        break
+      end
     end
 
-    best_s.lb = max(best_s.lb, value_dual(ℓ, Y, X, α, indices, n_indices, γ))
-    #Gradient ascent on α
-    ∇ = grad_dual(ℓ, Y, X, α, indices, n_indices, γ, cache)
-
-    #Stop if small gradient
-    if norm(∇, 1) <= 1e-14
-      maxIter = iter
-      break
-    end
-
-    #For numeric stability
-    if norm(∇, 1) == Inf
-      pInfIndex = find(∇ .== Inf)
-      nInfIndex = find(∇ .== -Inf)
-
-      α[pInfIndex] = -Y[pInfIndex]*1e-14
-      α[nInfIndex] = -Y[nInfIndex]*(1-1e-14)
-
-      ∇[pInfIndex] = 0.
-      ∇[nInfIndex] = 0.
-    end
-
-    δ =  η*(best_s.ub - best_s.lb) / dot(∇,∇) #Poliak's rule
-    α .+= δ*∇
-    # α = proj_dual(ℓ, Y, α)
-    # α = proj_intercept(intercept, α)
-    proj_dual!(ℓ, Y, α)
-    proj_intercept!(intercept, α)
-
-    if iter % 50 == 0
-      η /= 2
-    end
-
-    #Update average a
-    @__dot__ a = (iter - 1) / iter * a + 1 / iter * α
-
-    #Duality gap rule
-    if (best_s.ub - best_s.lb) / abs(best_s.lb) < dGap
-      maxIter = iter
-      break
-    end
-    #Duality gap rule
-    if consecutive_noimprov >= noImprov_threshold
-      maxIter = iter
-      break
-    end
+    slashStep!(stepRule, 2.)
   end
 
   ##Compute sparse estimator
   #Subset of relevant features
-  n_indices = partial_min!(indices, Card, X, a, γ, cache)
+  n_indices, = partial_min!(indices, Card, X, a, γ, cache)
   #Regressor
-  w = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
+  w[1:n_indices] = recover_primal(ℓ, Y, X[:,indices[1:n_indices]], γ)
 
-  value = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w, γ, cache)
-  if value > best_s.ub #If last solution worse than the best found
+  objvalue = value_primal(ℓ, Y, X[:,indices[1:n_indices]], w[1:n_indices], γ, cache)
+  if objvalue > best_s.obj #If last solution worse than the best found
       n_indices = best_s.nindices
-      indices[:] = best_s.indices[:]
-      w = best_s.w[1:n_indices]
+      indices[1:n_indices] = best_s.indices[1:n_indices]
+      w[1:n_indices] = best_s.w[1:n_indices]
   end
 
   #Bias
@@ -183,7 +213,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
   #Resize final indices vector to only have relevant entries
   resize!(indices, n_indices)
 
-  return SparseEstimator(ℓ, Card, indices, w, a, b, maxIter)
+  return SparseEstimator(ℓ, Card, indices, w[1:n_indices], a, b, effectiveEpoch)
 end
 
 # Helper to check if indices and indices_old are the same
@@ -298,8 +328,15 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   indices[1:n_indices] = perm[1:n_indices]
   sort!(@view(indices[1:n_indices]))
 
+  tie = false
+  if n_indices < p
+    if abs(ax[perm[n_indices+1]] - ax[perm[n_indices]])/ax[perm[n_indices]] <= 1e-6
+      tie = true
+      indices[n_indices+1] = perm[n_indices+1]
+    end
+  end
   # Return the updated size of indices
-  return n_indices
+  return n_indices, tie
 end
 
 function partial_min!(indices, Card::Penalty, X, α, γ, cache::Cache)
@@ -317,8 +354,8 @@ function partial_min!(indices, Card::Penalty, X, α, γ, cache::Cache)
       indices[n_indices] = j
     end
   end
-
-  return n_indices
+  tie = false #TO DO
+  return n_indices, tie
 end
 
 ##Bias term
