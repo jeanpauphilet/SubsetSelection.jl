@@ -325,7 +325,9 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   map!(abs, ax, ax)
 
   sortperm!(perm, ax, rev=true)
+
   indices[1:n_indices] = perm[1:n_indices]
+
   sort!(@view(indices[1:n_indices]))
 
   tie = false
@@ -371,12 +373,12 @@ end
 
 ##Primal objective function value for a given primal variable w
 function value_primal(ℓ::LossFunction, Y, X, w, γ, cache::Cache)
-  # g = cache.g
-  # # for i in 1:size(X, 1)
-  # #   g[i] = loss(ℓ, Y[i], dot(X[i,:], w))
-  # # end
-  # g[:] = loss(ℓ, Y, X*w)
-  return sum(loss(ℓ, Y, X*w)) + dot(w,w)/2/γ
+  g = cache.g
+  for i in 1:size(X, 1)
+    g[i] = loss(ℓ, Y[i], dot(X[i,:], w))
+  end
+  return sum(g) + dot(w,w)/2/γ
+  # return sum(loss(ℓ, Y, X*w)) + dot(w,w)/2/γ
   # v = sum([loss(ℓ, Y[i], dot(X[i,:], w)) for i in 1:size(X, 1)])
   # v += dot(w,w)/2/γ
   # return v

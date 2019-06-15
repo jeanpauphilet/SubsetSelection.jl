@@ -1,6 +1,5 @@
 using SubsetSelection
-using StatsBase
-using Test
+using StatsBase, Test
 
 n = 500; p = 1000; k = 10;
 
