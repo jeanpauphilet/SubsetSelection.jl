@@ -14,7 +14,6 @@ Compat = "≥ 0.17.0"
 LIBLINEAR = "≥ 0.2.1"
 julia = "≧ 0.7.0"
 
-
 [extras]
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
