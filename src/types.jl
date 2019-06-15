@@ -3,21 +3,21 @@
 @compat abstract type Regression <: LossFunction end
 @compat abstract type Classification <: LossFunction end
   #Loss functions for regression
-  immutable OLS <: Regression
+  struct OLS <: Regression
   end
-  immutable L1SVR <: Regression
+  struct L1SVR <: Regression
     ɛ::Float64
   end
-  immutable L2SVR <: Regression
+  struct L2SVR <: Regression
     ɛ::Float64
   end
 
   #Loss functions for classification
-  immutable LogReg <: Classification
+  struct LogReg <: Classification
   end
-  immutable L1SVM <: Classification
+  struct L1SVM <: Classification
   end
-  immutable L2SVM <: Classification
+  struct L2SVM <: Classification
   end
 
   ##Point-wise value of the Fenchel conjugate for each loss function
@@ -83,7 +83,7 @@
 ##Sparsity type: specify how sparsity is enforced, constrained or penalized
 @compat abstract type Sparsity end
     #Constraint: add the constraint "s.t. ||w||_0<=k"
-    immutable Constraint <: Sparsity
+    struct Constraint <: Sparsity
       k::Int
     end
     function parameter(Card::Constraint)
@@ -92,7 +92,7 @@
     max_index_size(Card::Constraint, p::Int) = min.(Card.k, p)
 
     #Penalty: add the penalty "+λ ||w||_0"
-    immutable Penalty <: Sparsity
+    struct Penalty <: Sparsity
       λ::Float64
     end
     function parameter(Card::Penalty)
@@ -101,7 +101,7 @@
     max_index_size(Card::Penalty, p::Int) = p
 
 ##SparseEstimator type: output of the algorithm
-type SparseEstimator
+struct SparseEstimator
   "Loss function used in the model"
   loss::LossFunction
   "Model to account for sparsity"

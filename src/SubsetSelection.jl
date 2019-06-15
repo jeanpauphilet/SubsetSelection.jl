@@ -1,5 +1,5 @@
 module SubsetSelection
-using Compat#, ProgressMeter
+using Compat, LinearAlgebra, Statistics, Random
 
 import Compat.String
 
@@ -12,16 +12,16 @@ include("stepsize.jl")
 include("recover_primal.jl")
 
 # Type to hold preallocated memory
-immutable Cache
+struct Cache
   g::Vector{Float64}
   ax::Vector{Float64}
   sortperm::Vector{Int}
 
   function Cache(n::Int, p::Int)
     new(
-      Vector{Float64}(n),
-      Vector{Float64}(p),
-      Vector{Int}(p),
+      Vector{Float64}(undef,n),
+      Vector{Float64}(undef,p),
+      Vector{Int}(undef,p),
     )
   end
 end
@@ -161,8 +161,8 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
 
       #For numeric stability
       if isa(ℓ, SubsetSelection.Classification) && norm(∇, 1) == Inf
-        pInfIndex = find(∇ .== Inf)
-        nInfIndex = find(∇ .== -Inf)
+        pInfIndex = findall(∇ .== Inf)
+        nInfIndex = findall(∇ .== -Inf)
 
         α[pInfIndex] = -Y[pInfIndex]*1e-14
         α[nInfIndex] = -Y[nInfIndex]*(1-1e-14)
@@ -235,16 +235,16 @@ end
 
 ##Default Initialization of prinal variables s depending on the model used
 function ind_init(Card::Constraint, p::Integer)
-  indices0 = find(x-> x<Card.k/p, rand(p))
+  indices0 = findall(x-> x<Card.k/p, rand(p))
   while !(Card.k >= length(indices0) >= 1)
-    indices0 = find(x-> x<Card.k/p, rand(p))
+    indices0 = findall(x-> x<Card.k/p, rand(p))
   end
   return indices0
 end
 function ind_init(Card::Penalty, p::Integer)
-  indices0 = find(x-> x<1/2, rand(p))
+  indices0 = findall(x-> x<1/2, rand(p))
   while !(length(indices0)>=1)
-    indices0 = find(x-> x<1/2, rand(p))
+    indices0 = findall(x-> x<1/2, rand(p))
   end
   return indices0
 end
@@ -320,7 +320,7 @@ function partial_min!(indices, Card::Constraint, X, α, γ, cache::Cache)
   n_indices = max_index_size(Card, p)
 
   # compute α'*X into pre-allocated scratch space
-  Ac_mul_B!(ax, X, α)
+  mul!(ax, X', α)
   # take the k largest (absolute) values of ax
   map!(abs, ax, ax)
 
@@ -343,7 +343,7 @@ function partial_min!(indices, Card::Penalty, X, α, γ, cache::Cache)
   ax = cache.ax
 
   # compute (α'*X).^2 into pre-allocated scratch space
-  Ac_mul_B!(ax, X, α)
+  mul!(ax, X', α)
   map!(abs2, ax, ax)
 
   # find indices with `λ - γ / 2 * (a'X_j)^2 < 0`

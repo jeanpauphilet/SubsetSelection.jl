@@ -8,7 +8,7 @@ INPUT
 OUTPUT
   w           - Optimal regressor"""
 function recover_primal(ℓ::Regression, Y, Z, γ)
-  CM = eye(size(Z,2))/γ + Z'*Z      # The capacitance matrix
+  CM = Matrix(I, size(Z,2), size(Z,2))/γ + Z'*Z      # The capacitance matrix
   α = -Y + Z*(CM\(Z'*Y))            # Matrix Inversion Lemma
   return -γ*Z'*α                    # Regressor
 end
