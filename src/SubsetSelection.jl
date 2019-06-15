@@ -53,8 +53,8 @@ INPUTS
 - intercept   (optional) Boolean. If true, an intercept term is computed as well
 
 - stepRule    (optional) Stepsize rule to be used in the subgradient algorithm. Default Poliak's
-- maxIter     (optional) Total number of iterations. Default 200
-- numberRestarts     (optional) Number of restarting. Default 4
+- maxIter     (optional) Total number of iterations. Default 500
+- numberRestarts     (optional) Number of restarting. Default 1
 Stopping criterion
 - noImprov_threshold      (optional) Algorithm stops after noImprov_threshold iterations without improvement
 - dGap (optional) Algorithm stops if the duality + integrality gap drops below dGap
@@ -65,7 +65,7 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
     indInit = ind_init(Card, size(X,2)), αInit=alpha_init(ℓ, Y),
     γ = 1/sqrt(size(X,1)),  intercept = false,
     stepRule::StepSizeRule = poliakRule(1),
-    maxIter = 200, numberRestarts = 4,
+    maxIter = 200, numberRestarts = 1,
     noImprov_threshold = maxIter, dGap = 1e-4)
 
   n,p = size(X)
