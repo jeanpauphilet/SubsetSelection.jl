@@ -1,6 +1,5 @@
 # SubsetSelection
 
-[![0.5](http://pkg.julialang.org/badges/SubsetSelection_0.5.svg)](http://pkg.julialang.org/?pkg=SubsetSelection)
 [![0.6](http://pkg.julialang.org/badges/SubsetSelection_0.6.svg)](http://pkg.julialang.org/?pkg=SubsetSelection)
 
 SubsetSelection is a Julia package that computes sparse L2-regularized estimators. Sparsity is enforced through explicit cardinality constraint or L0-penalty. Supported loss functions for regression are least squares, L1 and L2 SVR; for classification, logistic, L1 and L2 Hinge loss. The algorithm formulates the problem as a mixed-integer saddle-point problem and solves its boolean relaxation using a dual sub-gradient approach.
@@ -45,7 +44,7 @@ julia> Sparse_Regressor.indices
  7748
  9267
  ```
- 
+
  or compute predictions
 ```julia
 julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
@@ -73,7 +72,7 @@ julia> Y_pred = X[:,Sparse_Regressor.indices]*Sparse_Regressor.w
   -6.06553
  ```
 
-For classification, we use +1/-1 labels and the convention 
+For classification, we use +1/-1 labels and the convention
 `P ( Y = y | X = x ) = 1 / (1+e^{- y x^T w})`.
 
 ## Required and optional parameters
@@ -90,17 +89,17 @@ In addition, `subsetSelection` accepts the following optional parameters:
 - the value of the ℓ2-regularization parameter `γ`, set to 1/√n by default.
 - `intercept`, a boolean. If true, an intercept/bias term is computed as well. By default, set to false.
 - the maximum number of iterations in the sub-gradient algorithm, `maxIter`.
-- the value of the gradient stepsize `δ`. By default, the stepsize is set to 1e-3, which demonstrates very good empirical performance. However, smaller stepsizes might be needed when dealing with very large datasets or when the Logistic loss is used. 
+- the value of the gradient stepsize `δ`. By default, the stepsize is set to 1e-3, which demonstrates very good empirical performance. However, smaller stepsizes might be needed when dealing with very large datasets or when the Logistic loss is used.
 - the number of gradient updates of dual variable α performed per update of primal variable s, `gradUp`.
-- `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. Empirically, the accuracy of the resulting support is strongly sensitive to noise - to use with caution. By default, set to false. 
+- `anticycling` a boolean. If true, the algorithm stops as soon as the support is not unchanged from one iteration to another. Empirically, the accuracy of the resulting support is strongly sensitive to noise - to use with caution. By default, set to false.
  - `averaging` a boolean. If true, the dual solution is averaged over past iterates. By default, set to true.
 
 ## Best practices
 - Tuning the regularization parameter `γ`: By default, `γ` is set to 1/√n, which is an appropriate scaling in most regression instances. For an optimal performance, and especially in classification or noisy settings, we recommend performing a grid search and using cross-validation to assess out-of-sample performance. The grid search should start with a very low value for `γ`, such as  
-```julia 
+```julia
     γ = 1.*p / k / n / maximum(sum(X[train,:].^2,2))
-``` 
+```
 and iteratively increase it by a factor 2. Mean square error or Area Under the Curve (see [ROCAnalysis]( https://github.com/davidavdav/ROCAnalysis.jl) for implementation) are commonly used performance metrics for regression and classification tasks respectively.
-- Instances where the algorithm fails to converge have been reported. If you occur such cases, try normalize the data matrix `X` and relaunch the algorithm. If the algorithm still fails to converge, reduce the stepsize `δ` by a factor 10 or 100 and increase the number of iterations `maxIter` by a factor at least 2. 
+- Instances where the algorithm fails to converge have been reported. If you occur such cases, try normalize the data matrix `X` and relaunch the algorithm. If the algorithm still fails to converge, reduce the stepsize `δ` by a factor 10 or 100 and increase the number of iterations `maxIter` by a factor at least 2.
 
 ## Reference
