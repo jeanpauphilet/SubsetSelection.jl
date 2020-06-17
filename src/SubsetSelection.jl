@@ -164,11 +164,11 @@ function subsetSelection(ℓ::LossFunction, Card::Sparsity, Y, X;
         pInfIndex = findall(∇ .== Inf)
         nInfIndex = findall(∇ .== -Inf)
 
-        α[pInfIndex] = -Y[pInfIndex]*1e-14
-        α[nInfIndex] = -Y[nInfIndex]*(1-1e-14)
+        α[pInfIndex] .= -Y[pInfIndex]*1e-14
+        α[nInfIndex] .= -Y[nInfIndex]*(1-1e-14)
 
-        ∇[pInfIndex] = 0.
-        ∇[nInfIndex] = 0.
+        ∇[pInfIndex] .= 0.
+        ∇[nInfIndex] .= 0.
       end
 
       δ =  computeStepSize(stepRule, iter, ∇, best_s.ub, best_s.lb)
